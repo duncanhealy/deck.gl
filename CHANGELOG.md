@@ -21,6 +21,85 @@ Ref: http://keepachangelog.com/en/0.3.0/
 
 ### deck.gl v8.5 Prereleases
 
+#### deck.gl [8.5.0-beta.1] - Jul 5 2021
+
+- Bump dependencies (#5951)
+- MVTLayer and TerrainLayer switch to use worker-only loaders (#5946)
+- update bundle config (#5949)
+- Bump loaders to 3.0.0-beta.6 (#5943)
+- MVTLayer use all loaders (#5934)
+- CARTO module: bearer token always in header (#5933)
+- TileLayer: add zoomOffset prop  (#5896)
+- Don't Use `tileSize` for Determining `z` of Tile Indexing in InfoVis (#5895)
+- CARTO module: rename code from cloud-native to carto3 (#5932)
+- tile-3d: update with new loaders version (#5920)
+- Fix: Initialize mapsUrl in cloud native (#5868)
+- Upgrade ocular-dev-tools (#5910)
+
+#### deck.gl [8.5.0-alpha.11] - Jun 21 2021
+
+- Fix: CARTO module WebGL invalid value for table (#5894)
+- TextLayer supports characterSet:auto (#5889)
+- Bump @loaders.gl to 3.0.0-alpha.21 (#5879)
+- Correct data.length for MVTLayer polygons (#5853)
+
+#### deck.gl [8.5.0-alpha.10] - Jun 11 2021
+
+- Support pointType prop to allow changing point rendering in GeoJsonLayer (#5835)
+- geo: tile-3d viewport filter (#5866)
+- Consolidate and document fetch prop (#5854)
+
+#### deck.gl [8.5.0-alpha.9] - Jun 9 2021
+
+- CARTO cloud native integration (#5859)
+- Fix inconsistent path layer id in GeoJSONLayer (#5855)
+- Tile3DLayer: multiple viewports (#5758)
+- Tile3DLayer: segmentation picking (#5757)
+- Fix event order when dynamically add/remove controllers (#5852)
+- Fix heatmap colorDomain (#5846)
+
+#### deck.gl [8.5.0-alpha.8] - Jun 5 2021
+
+- Pass through loadOptions and AbortSignal to MVTLayer & TerrainLayer (#5837)
+- Refactor OrbitController (#5825)
+- Allow CompositeLayer to filter sub layers during redraw (#5820)
+- Add getTilerColor method to tile-3d-layer (#5814)
+- Refactor linear transition in controllers (#5824)
+- i3s: support vertex colors (#5756)
+- i3s: support uvRegions (#5760)
+- Fix heatmap colorDomain (#5802)
+- feat(geo-layers): Private MeshLayer with pbr material support (I3S) (#5761)
+
+#### deck.gl [8.5.0-alpha.7] - May 25 2021
+
+- geo: i3s - support indices (#5807)
+- Bump @loaders.gl to 3.0.0-alpha.16 to pick up earcut migration to math.gl (#5805)
+- Set default of MVTLayer binary to true (#5800)
+- Fix size projection in billboard mode (#5798)
+
+#### deck.gl [8.5.0-alpha.6] - May 17 2021
+
+- Bump @loaders.gl to 3.0.0-alpha.14 (#5780)
+- Tile3DLayer: Ability to override color per tile (#5759)
+- Support local-math env option (#5737)
+
+#### deck.gl [8.5.0-alpha.5] - May 10 2021
+
+- Do not log init message unless log priority set to 1 (#5718)
+- Normalize viewState on MapController initialization + add normalize flag (#5727)
+- Move ClipExtension to @deck.gl/extensions (#5726)
+- Add onError to Layer props (#5732)
+- Invoke onError when GL context is lost (#5731)
+- Clean up Deck's internal method bindings (#5730)
+- Update onError callback default (#5702)
+- Support triangulation of polygons for MVTLoader in loaders.gl (#5712)
+- Revert "[feat] WebGL context lost handling > pass to listeners of onError (#5399)" (#5604)
+
+#### deck.gl [8.5.0-alpha.4] - Mar 22 2021
+
+[feat] WebGL context lost handling > pass to listeners of on
+Error (#5399)
+
 #### deck.gl [8.5.0-alpha.3] - Feb 25 2021
 
 - Bump luma.gl dependencies to 8.5.0-alpha (#5535)

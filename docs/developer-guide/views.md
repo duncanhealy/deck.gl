@@ -87,7 +87,7 @@ Note that the set of view state parameters that will be used varies between View
 | [`MapView`](/docs/api-reference/core/map-view.md) (default)         | geospatial | full support | This class renders data using the [Web Mercator projection](https://en.wikipedia.org/wiki/Web_Mercator_projection) and is designed to match an external base map library such as mapbox-gl or Google Maps.
 | [`FirstPersonView`](/docs/api-reference/core/first-person-view.md)  | geospatial | full support | The camera is positioned in a provided geolocation and looks in a provided direction, similar to that of a [first-person game](https://en.wikipedia.org/wiki/First-person_(gaming)). |
 | [`OrthographicView`](/docs/api-reference/core/orthographic-view.md) | info-vis (2D)     | full support | The camera looks at a target point from top-down. Does not rotate. |
-| [`OrbitView`](/docs/api-reference/core/perspective-view.md)         | info-vis (3D)     | full support | The camera looks at a target point from a provided direction. Rotates around the target. |
+| [`OrbitView`](/docs/api-reference/core/orbit-view.md)         | info-vis (3D)     | full support | The camera looks at a target point from a provided direction. Rotates around the target. |
 
 
 ## Examples
@@ -307,7 +307,7 @@ const deck = new Deck({
 });
 ```
 
-Some layers, including `TileLayer`, `Tile3DLayer`, `HeatmapLayer` and `ScreenGridLayer`, perform expensive operations (data fetching/aggregation) on viewport change. Therefore, it is generally NOT recommended to render them into multiple views. If you do need to show e.g. tiled base map in multiple views, create one layer instance for each view and limit their rendering with `layerFilter`:
+Some layers, including `TileLayer`, `HeatmapLayer` and `ScreenGridLayer`, perform expensive operations (data fetching/aggregation) on viewport change. Therefore, it is generally NOT recommended to render them into multiple views. If you do need to show e.g. tiled base map in multiple views, create one layer instance for each view and limit their rendering with `layerFilter`:
 
 ```js
 const deck = new Deck({
@@ -328,6 +328,8 @@ const deck = new Deck({
   });
 });
 ```
+
+Starting with v8.5, `Tile3DLayer` supports rendering in multiple views with a single tile cache.
 
 
 ### Picking in Multiple Views

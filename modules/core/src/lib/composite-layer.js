@@ -76,6 +76,18 @@ export default class CompositeLayer extends Layer {
     return null;
   }
 
+  /**
+   * Filters sub layers at draw time
+   * @param {Layer} context.layer - sub layer instance
+   * @param {Viewport} context.viewport - the viewport being rendered in
+   * @param {Boolean} context.isPicking - whether it is a picking pass
+   * @param {String} context.pass - the current pass
+   * @return {Boolean} true if the sub layer should be drawn
+   */
+  filterSubLayer(context) {
+    return true;
+  }
+
   // Returns true if sub layer needs to be rendered
   shouldRenderSubLayer(id, data) {
     const {_subLayerProps: overridingProps} = this.props;
@@ -124,6 +136,7 @@ export default class CompositeLayer extends Layer {
   }
 
   // Returns sub layer props for a specific sublayer
+  // eslint-disable-next-line complexity
   getSubLayerProps(sublayerProps = {}) {
     const {
       opacity,
@@ -140,6 +153,7 @@ export default class CompositeLayer extends Layer {
       positionFormat,
       modelMatrix,
       extensions,
+      fetch,
       _subLayerProps: overridingProps
     } = this.props;
     const newProps = {
@@ -156,7 +170,8 @@ export default class CompositeLayer extends Layer {
       wrapLongitude,
       positionFormat,
       modelMatrix,
-      extensions
+      extensions,
+      fetch
     };
 
     const overridingSublayerProps = overridingProps && overridingProps[sublayerProps.id];
@@ -166,8 +181,9 @@ export default class CompositeLayer extends Layer {
 
     if (overridingSublayerProps) {
       const propTypes = this.constructor._propTypes;
+      const subLayerPropTypes = sublayerProps.type ? sublayerProps.type._propTypes : {};
       for (const key in overridingSublayerProps) {
-        const propType = propTypes[key];
+        const propType = subLayerPropTypes[key] || propTypes[key];
         // eslint-disable-next-line
         if (propType && propType.type === 'accessor') {
           overridingSublayerProps[key] = this.getSubLayerAccessor(overridingSublayerProps[key]);
