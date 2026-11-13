@@ -1,3 +1,7 @@
 public
 .cache
 report*.json
+build
+.docusaurus
+.swc
+static/v10-examples

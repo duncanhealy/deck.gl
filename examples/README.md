@@ -10,14 +10,12 @@ start modifying and experimenting with.
 ### [Get-Started Examples](./get-started)
 
 These are intended to be absolutely minimal (in terms of application code,
-package.json, webpack config etc) examples of how to get deck.gl and a base
+package.json, bundler config etc) examples of how to get deck.gl and a base
 map working together.
 
-* **[Pure JS](./get-started/pure-js)** Applications without depending any additional framework. Bundled with
-  webpack and served with webpack-dev-server.
-* **[React](./get-started/react)** React exmples using `@deck.gl/react` and `react-map-gl`. Bundled with
-  webpack and served with webpack-dev-server. Transpiled with Babel.
-* **[Scripting](./get-started/scripting)** HTML single-file examples that can be  opened directly in a browser.
+* **[Pure JS](./get-started/pure-js)** Applications without depending any additional framework. Bundled and served with [Vite](https://vitejs.dev).
+* **[React](./get-started/react)** React examples using `@deck.gl/react` and `react-map-gl`. Bundled and served with [Vite](https://vitejs.dev).
+* **[Scripting](./get-started/scripting)** HTML single-file examples that can be opened directly in a browser.
 
 
 ### [Website Examples](./website)
@@ -50,6 +48,14 @@ This is the main example used for testing layers during development of deck.gl.
 These are examples that use experimental deck.gl features, or implement features that we consider adding to the deck.gl API. We think they are useful to advanced users, but not yet mature enough to be an "official" example on the website.
 
 
+### [Experimental deck.gl Examples](./v10-experimental)
+
+These examples explore experimental Arrow layers, GPU graph layers, and visual effects.
+They share fixtures in [Arrow fixtures](./v10-experimental/shared/arrow) and
+[showcase fixtures](./v10-experimental/shared/showcase). See the example collection README
+for setup requirements and commands.
+
+
 ## Installing and Running
 
 Most example apps can be run by installing the dependencies with either `yarn` or with `npm install`, then `npm run start`. Refer to the README in each example directory for app-specific instructions.
@@ -64,5 +70,3 @@ with hot reloading) or against an installed version of deck.gl
 
 Examples that support this mode have a `start-local` script in their
 `package.json`.
-
-Look at the `webpack.config.local.js` in this directory for details.

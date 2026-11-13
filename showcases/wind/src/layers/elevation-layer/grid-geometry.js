@@ -1,4 +1,8 @@
-import GL from '@luma.gl/constants';
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {GL} from '@luma.gl/core/webgl-constants';
 import {Geometry} from 'luma.gl';
 
 export default class GridGeometry extends Geometry {

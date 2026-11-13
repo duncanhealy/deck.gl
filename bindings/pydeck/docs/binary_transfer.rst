@@ -1,6 +1,10 @@
 Binary data transfer
 ====================
 
+.. NOTE::
+   Binary data transfer requires the Jupyter widget integration, which is not currently
+   functional in pydeck v0.9+. See :doc:`jupyter` for details.
+
 Motivation
 ^^^^^^^^^^
 
@@ -26,7 +30,7 @@ Binary transport will only work if the following requirements are met:
 - Accessor names must be strings representing column names within the data frame,
   e.g., ``get_position='position'`` is correct, **not** ``get_position=['x', 'y']``.
   For example,
- 
+
   This data format, where ``x`` & ``y`` represent a position and ``r``, ``g``, and ``b`` represent color values,
 
     +---+---+-----+-----+---+

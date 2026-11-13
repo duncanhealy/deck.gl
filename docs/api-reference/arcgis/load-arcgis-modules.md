@@ -7,11 +7,32 @@ This utility function initializes the classes in this module by loading ArcGIS d
 ```js
 import {loadArcGISModules} from '@deck.gl/arcgis';
 
-loadArcGISModules(['esri/Map', 'esri/views/MapView'], {version: '4.14'})
+loadArcGISModules(['esri/Map', 'esri/views/MapView'], {version: '4.21'})
   .then(({DeckLayer, DeckRenderer, modules}) => {
     const [ArcGISMap, MapView] = modules;
 
-    // Create map
+    const layer = new DeckLayer({
+      'deck.layers': [
+        new ScatterplotLayer({
+          data: [
+            {position: [0.119, 52.205]}
+          ],
+          getPosition: d => d.position,
+          getColor: [255, 0, 0],
+          radiusMinPixels: 20
+        })
+      ]
+    });
+
+    const mapView = new MapView({
+      container: "viewDiv",
+      map: new ArcGISMap({
+        basemap: "dark-gray-vector",
+        layers: [layer]
+      }),
+      center: [0.119, 52.205],
+      zoom: 5
+    });
   });
 ```
 
@@ -21,11 +42,11 @@ Arguments:
 loadArcGISModules(modules, loadScriptOptions);
 ```
 
-- `modules` (Array, optional) - Array of esri modules to load, passed to [esri-loader](https://github.com/Esri/esri-loader)'s `loadModules`
-- `loadScriptOptions` (Object, optional) - [esri-loader options](https://github.com/Esri/esri-loader#configuring-esri-loader)
+- `modules` (string[], optional) - Array of esri modules to load, passed to [esri-loader](https://github.com/Esri/esri-loader)'s `loadModules`
+- `loadScriptOptions` (object, optional) - [esri-loader options](https://github.com/Esri/esri-loader#configuring-esri-loader)
 
 Returns: a promise that resolves to an object with the following fields:
 
-- [DeckLayer](/docs/api-reference/arcgis/deck-layer.md)
-- [DeckRenderer](/docs/api-reference/core/deck-renderer.md)
-- `modules` (Array) - if the `modules` argument was specified, will represent an array of the resolved objects
+- [DeckLayer](./deck-layer.md)
+- [DeckRenderer](./deck-renderer.md)
+- `modules` (object[]) - if the `modules` argument was specified, will represent an array of the resolved objects

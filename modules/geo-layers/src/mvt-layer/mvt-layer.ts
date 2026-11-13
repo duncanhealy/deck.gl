@@ -1,0 +1,532 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {
+  Layer,
+  LayersList,
+  log,
+  PickingInfo,
+  UpdateParameters,
+  GetPickingInfoParams,
+  DefaultProps
+} from '@deck.gl/core';
+import {GeoJsonLayer, GeoJsonLayerProps} from '@deck.gl/layers';
+import {ClipExtension} from '@deck.gl/extensions';
+import type {ClipExtensionProps} from '@deck.gl/extensions';
+
+import {Matrix4, equals} from '@math.gl/core';
+import {MVTWorkerLoader} from '@loaders.gl/tiles/mvt';
+import {convertBinaryFeatureCollectionToGeojson} from '@loaders.gl/core/geoarrow';
+
+import type {Loader} from '@loaders.gl/core/loader-utils';
+import type {BinaryFeatureCollection} from '@loaders.gl/core/schema';
+import type {Feature, Geometry} from 'geojson';
+
+import {transform} from './coordinate-transform';
+import findIndexBinary from './find-index-binary';
+
+import TileLayer, {TileLayerPickingInfo, TileLayerProps} from '../tile-layer/tile-layer';
+
+import type {Tileset2DProps, TileLoadProps, GeoBoundingBox} from '../tileset-2d/index';
+import {
+  urlType,
+  Tileset2D,
+  Tile2DHeader,
+  getURLFromTemplate,
+  URLTemplate,
+  isGeoBoundingBox,
+  isURLTemplate
+} from '../tileset-2d/index';
+
+const WORLD_SIZE = 512;
+
+const defaultProps: DefaultProps<MVTLayerProps> = {
+  ...GeoJsonLayer.defaultProps,
+  coordinateSystem: 'OSMTile512',
+  data: urlType,
+  onDataLoad: {type: 'function', value: null, optional: true, compare: false},
+  uniqueIdProperty: '',
+  highlightedFeatureId: null,
+  loaders: [MVTWorkerLoader],
+  binary: true
+};
+
+export type TileJson = {
+  tilejson: string;
+  tiles: string[];
+  // eslint-disable-next-line camelcase
+  vector_layers: any[];
+  attribution?: string;
+  scheme?: string;
+  maxzoom?: number;
+  minzoom?: number;
+  version?: string;
+};
+
+type ParsedMvtTile = Feature[] | BinaryFeatureCollection;
+
+export type MVTLayerPickingInfo<FeaturePropertiesT = {}> = TileLayerPickingInfo<
+  ParsedMvtTile,
+  PickingInfo<Feature<Geometry, FeaturePropertiesT>>
+>;
+
+/** All props supported by the MVTLayer */
+export type MVTLayerProps<FeaturePropertiesT = unknown> = _MVTLayerProps<FeaturePropertiesT> &
+  Omit<TileLayerProps<ParsedMvtTile>, 'data'>;
+
+/** Props added by the MVTLayer  */
+export type _MVTLayerProps<FeaturePropertiesT> = Omit<
+  GeoJsonLayerProps<FeaturePropertiesT>,
+  'data'
+> & {
+  data: TileJson | URLTemplate;
+
+  /** Called if `data` is a TileJSON URL when it is successfully fetched. */
+  onDataLoad?: ((tilejson: TileJson | null) => void) | null;
+
+  /** Needed for highlighting a feature split across two or more tiles. */
+  uniqueIdProperty?: string;
+
+  /** A feature with ID corresponding to the supplied value will be highlighted. */
+  highlightedFeatureId?: string | number | null;
+
+  /**
+   * Use tile data in binary format.
+   *
+   * @default true
+   */
+  binary?: boolean;
+
+  /**
+   * Loaders used to transform tiles into `data` property passed to `renderSubLayers`.
+   *
+   * @default [MVTWorkerLoader] from `@loaders.gl/tiles/mvt`
+   */
+  loaders?: Loader[];
+};
+
+type ContentWGS84Cache = {_contentWGS84?: Feature[]};
+
+/** Render data formatted as [Mapbox Vector Tiles](https://docs.mapbox.com/vector-tiles/specification/). */
+/**
+ * Compatibility MVT layer retaining binary data, TileJSON, and rendered-feature APIs.
+ * Remains supported while MVT2DLayer gains equivalent feature coverage.
+ */
+export default class MVTLayer<
+  FeaturePropertiesT = any,
+  ExtraProps extends {} = {}
+> extends TileLayer<ParsedMvtTile, Required<_MVTLayerProps<FeaturePropertiesT>> & ExtraProps> {
+  static layerName = 'MVTLayer';
+  static defaultProps = defaultProps;
+
+  state!: TileLayer<ParsedMvtTile>['state'] & {
+    binary: boolean;
+    data: URLTemplate;
+    tileJSON: TileJson | null;
+    highlightColor?: number[];
+    hoveredFeatureId: number | string | null;
+    hoveredFeatureLayerName: string | null;
+  };
+
+  initializeState(): void {
+    super.initializeState();
+    this.setState({
+      binary: this.useBinary(),
+      data: null,
+      tileJSON: null,
+      hoveredFeatureId: null,
+      hoveredFeatureLayerName: null
+    });
+  }
+
+  /** Select the tile data format; subclasses with fixed-format loaders can override it. */
+  protected useBinary(): boolean {
+    // Prepared binary geometry bypasses subdivision, so request GeoJSON when needed.
+    return this.getSubdivisionStep() > 0 ? false : this.props.binary;
+  }
+
+  get isLoaded(): boolean {
+    return Boolean(this.state?.data && super.isLoaded);
+  }
+
+  updateState({props, oldProps, context, changeFlags}: UpdateParameters<this>) {
+    const dataChanged = changeFlags.dataChanged;
+    const binary = this.useBinary();
+    if (binary !== this.state.binary) {
+      this.setState({binary});
+      // The tile representation must change when subdivision is enabled/disabled.
+      changeFlags = {
+        ...changeFlags,
+        dataChanged: 'tile geometry format changed',
+        propsOrDataChanged: true
+      };
+    }
+    if (dataChanged) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      this._updateTileData();
+    }
+
+    if (this.state?.data) {
+      super.updateState({props, oldProps, context, changeFlags});
+      this._setWGS84PropertyForTiles();
+    }
+    const {highlightColor} = props;
+    if (highlightColor !== oldProps.highlightColor && Array.isArray(highlightColor)) {
+      this.setState({highlightColor});
+    }
+  }
+
+  /* eslint-disable complexity */
+  private async _updateTileData(): Promise<void> {
+    let data = this.props.data;
+    let tileJSON: TileJson | null = null;
+
+    if (typeof data === 'string' && !isURLTemplate(data)) {
+      const {onDataLoad, fetch} = this.props;
+      this.setState({data: null, tileJSON: null});
+      try {
+        tileJSON = await fetch(data, {propName: 'data', layer: this, loaders: []});
+      } catch (error: any) {
+        this.raiseError(error, 'loading TileJSON');
+        data = null;
+      }
+
+      if (onDataLoad) {
+        onDataLoad(tileJSON, {propName: 'data', layer: this});
+      }
+    } else if (data && typeof data === 'object' && 'tilejson' in data) {
+      tileJSON = data;
+    }
+
+    if (tileJSON) {
+      data = tileJSON.tiles;
+    }
+
+    this.setState({data, tileJSON});
+  }
+
+  _getTilesetOptions(): Tileset2DProps {
+    const opts = super._getTilesetOptions();
+    const tileJSON: TileJson | null = this.state.tileJSON;
+    const {minZoom, maxZoom} = this.props;
+
+    if (tileJSON) {
+      if (Number.isFinite(tileJSON.minzoom) && (tileJSON.minzoom as number) > (minZoom as number)) {
+        opts.minZoom = tileJSON.minzoom;
+      }
+
+      if (
+        Number.isFinite(tileJSON.maxzoom) &&
+        (!Number.isFinite(maxZoom) || (tileJSON.maxzoom as number) < (maxZoom as number))
+      ) {
+        opts.maxZoom = tileJSON.maxzoom;
+      }
+    }
+    return opts;
+  }
+
+  /* eslint-disable complexity */
+
+  renderLayers(): Layer | null | LayersList {
+    if (!this.state?.data) return null;
+    return super.renderLayers();
+  }
+
+  async getTileData(loadProps: TileLoadProps): Promise<ParsedMvtTile> {
+    const {data, binary} = this.state;
+    const {index, signal} = loadProps;
+
+    const url = getURLFromTemplate(data, loadProps);
+    if (!url) {
+      return Promise.reject('Invalid URL');
+    }
+    let loadOptions = this.getLoadOptions();
+    const {fetch} = this.props;
+    loadOptions = {
+      ...loadOptions,
+      core: {
+        ...loadOptions?.core,
+        mimeType: 'application/x-protobuf'
+      },
+      mvt: {
+        ...loadOptions?.mvt,
+        shape: binary ? 'binary-geometry' : 'geojson-table',
+        coordinates: 'local',
+        tileIndex: index
+        // Local worker debug
+        // workerUrl: `modules/mvt/dist/mvt-loader.worker.js`
+        // Set worker to null to skip web workers
+        // workerUrl: null
+      }
+    };
+    const tileData = await fetch(url, {propName: 'data', layer: this, loadOptions, signal});
+    // Keep the layer's feature-array contract when loaders.gl returns a GeoJSON table.
+    return tileData?.shape === 'geojson-table' ? tileData.features : tileData;
+  }
+
+  renderSubLayers(
+    props: TileLayer['props'] &
+      ClipExtensionProps & {
+        id: string;
+        data: ParsedMvtTile;
+        _offset: number;
+        tile: Tile2DHeader<ParsedMvtTile>;
+      }
+  ): Layer | null | LayersList {
+    const {x, y, z} = props.tile.index;
+    const worldScale = Math.pow(2, z);
+
+    const xScale = WORLD_SIZE / worldScale;
+    const yScale = xScale;
+
+    const xOffset = (WORLD_SIZE * x) / worldScale;
+    const yOffset = (WORLD_SIZE * y) / worldScale;
+
+    const modelMatrix = new Matrix4().scale([xScale, yScale, 1]);
+
+    props.autoHighlight = false;
+
+    // Tile-local data stays viewport-independent. Sublayers convert the declared
+    // southward-Y world coordinates to the active viewport's attribute CRS.
+    props.modelMatrix = modelMatrix;
+    props.coordinateOrigin = [xOffset, yOffset, 0];
+    props.coordinateSystem = 'OSMTile512';
+
+    // A tiler writes a feature into the buffer of every tile it touches, so each tile must paint
+    // only its own area or the shared geometry is drawn once per tile. This applies to the point
+    // sub layers too: a point inside a neighbor's buffer is emitted by both tiles. `ClipExtension`
+    // clips those by anchor rather than by geometry, so a label or icon still overhangs the edge.
+    // `clip_isInBounds` is half-open, so a feature exactly on a shared edge is drawn by one tile
+    // rather than both.
+    // The tile, in tile-local coordinates
+    const tileClipBounds: [number, number, number, number] = [0, 0, 1, 1];
+    // ClipExtension's default clipBounds is the same unit square, so only other bounds were set
+    // by the caller
+    if (props.clipBounds && !equals(props.clipBounds, tileClipBounds)) {
+      log.warn(
+        `${this.id}: clipBounds is reserved by MVTLayer, which clips each sub layer to its tile`
+      )();
+    }
+    props.clipBounds = tileClipBounds;
+    // A second ClipExtension would inject the same shader declarations twice and fail to compile
+    if (!props.extensions?.some(extension => extension instanceof ClipExtension)) {
+      props.extensions = [...(props.extensions || []), new ClipExtension()];
+    }
+
+    const subLayers = super.renderSubLayers(props);
+
+    if (this.state.binary && !(subLayers instanceof GeoJsonLayer)) {
+      log.warn('renderSubLayers() must return GeoJsonLayer when using binary:true')();
+    }
+
+    return subLayers;
+  }
+
+  protected _updateAutoHighlight(info: PickingInfo): void {
+    const {uniqueIdProperty} = this.props;
+
+    const {hoveredFeatureId, hoveredFeatureLayerName} = this.state;
+    const hoveredFeature = info.object;
+    let newHoveredFeatureId: string | number | null = null;
+    let newHoveredFeatureLayerName: string | null = null;
+
+    if (hoveredFeature) {
+      newHoveredFeatureId = getFeatureUniqueId(hoveredFeature, uniqueIdProperty);
+      newHoveredFeatureLayerName = getFeatureLayerName(hoveredFeature);
+    }
+    let {highlightColor} = this.props;
+    if (typeof highlightColor === 'function') {
+      highlightColor = highlightColor(info);
+    }
+
+    if (
+      hoveredFeatureId !== newHoveredFeatureId ||
+      hoveredFeatureLayerName !== newHoveredFeatureLayerName
+    ) {
+      this.setState({
+        highlightColor,
+        hoveredFeatureId: newHoveredFeatureId,
+        hoveredFeatureLayerName: newHoveredFeatureLayerName
+      });
+    }
+  }
+
+  protected _isWGS84(): boolean {
+    // Subclasses with geographic loaders (e.g. CARTO) override this picking contract.
+    return false;
+  }
+
+  getPickingInfo(params: GetPickingInfoParams): MVTLayerPickingInfo<FeaturePropertiesT> {
+    const info = super.getPickingInfo(params);
+
+    if (this.state.binary && info.index !== -1) {
+      const {data} = params.sourceLayer!.props;
+      info.object = convertBinaryFeatureCollectionToGeojson(data as BinaryFeatureCollection, {
+        globalFeatureId: info.index
+      }) as Feature;
+    }
+    if (info.object && !this._isWGS84()) {
+      info.object = transformTileCoordsToWGS84(
+        info.object,
+        info.tile!.bbox as GeoBoundingBox // eslint-disable-line
+      );
+    }
+
+    return info;
+  }
+
+  getSubLayerPropsByTile(tile: Tile2DHeader<ParsedMvtTile>): Record<string, any> {
+    return {
+      highlightedObjectIndex: this.getHighlightedObjectIndex(tile),
+      highlightColor: this.state.highlightColor
+    };
+  }
+
+  private getHighlightedObjectIndex(tile: Tile2DHeader<ParsedMvtTile>): number {
+    const {hoveredFeatureId, hoveredFeatureLayerName, binary} = this.state;
+    const {uniqueIdProperty, highlightedFeatureId} = this.props;
+    const data = tile.content;
+
+    const isHighlighted = isFeatureIdDefined(highlightedFeatureId);
+    const isFeatureIdPresent = isFeatureIdDefined(hoveredFeatureId) || isHighlighted;
+
+    if (!isFeatureIdPresent) {
+      return -1;
+    }
+
+    const featureIdToHighlight = isHighlighted ? highlightedFeatureId! : hoveredFeatureId!;
+
+    // Iterable data
+    if (Array.isArray(data)) {
+      return data.findIndex(feature => {
+        const isMatchingId = getFeatureUniqueId(feature, uniqueIdProperty) === featureIdToHighlight;
+        const isMatchingLayer =
+          isHighlighted || getFeatureLayerName(feature) === hoveredFeatureLayerName;
+        return isMatchingId && isMatchingLayer;
+      });
+
+      // Non-iterable data
+    } else if (data && binary) {
+      // Get the feature index of the selected item to highlight
+      return findIndexBinary(
+        data,
+        uniqueIdProperty,
+        featureIdToHighlight,
+        isHighlighted ? '' : hoveredFeatureLayerName!
+      );
+    }
+
+    return -1;
+  }
+
+  private _pickObjects(maxObjects: number | null): PickingInfo[] {
+    const {deck, viewport} = this.context;
+    const width = viewport.width;
+    const height = viewport.height;
+    const x = viewport.x;
+    const y = viewport.y;
+    const layerIds = [this.id];
+    return deck!.pickObjects({x, y, width, height, layerIds, maxObjects});
+  }
+
+  /** Get the rendered features in the current viewport. */
+  getRenderedFeatures(maxFeatures: number | null = null): Feature[] {
+    const features = this._pickObjects(maxFeatures);
+    const featureCache = new Set();
+    const renderedFeatures: Feature[] = [];
+
+    for (const f of features) {
+      const featureId = getFeatureUniqueId(f.object, this.props.uniqueIdProperty);
+
+      if (featureId === undefined) {
+        // we have no id for the feature, we just add to the list
+        renderedFeatures.push(f.object as Feature);
+      } else if (!featureCache.has(featureId)) {
+        // Add removing duplicates
+        featureCache.add(featureId);
+        renderedFeatures.push(f.object as Feature);
+      }
+    }
+
+    return renderedFeatures;
+  }
+
+  private _setWGS84PropertyForTiles(): void {
+    const propName = 'dataInWGS84';
+    const tileset: Tileset2D = this.state.tileset!;
+
+    // @ts-expect-error selectedTiles are always initialized when tile is being processed
+    tileset.selectedTiles.forEach((tile: Tile2DHeader & ContentWGS84Cache) => {
+      if (!tile.hasOwnProperty(propName)) {
+        // eslint-disable-next-line accessor-pairs
+        Object.defineProperty(tile, propName, {
+          get: () => {
+            // Still loading or encountered an error
+            if (!tile.content) {
+              return null;
+            }
+
+            if (this.state.binary && Array.isArray(tile.content) && !tile.content.length) {
+              // TODO: @loaders.gl/tiles/mvt returns [] when no content. It should return a valid empty binary.
+              // https://github.com/visgl/loaders.gl/pull/1137
+              return [];
+            }
+
+            const {bbox} = tile;
+            if (tile._contentWGS84 === undefined && isGeoBoundingBox(bbox)) {
+              // Create a cache to transform only once
+
+              const content = this.state.binary
+                ? convertBinaryFeatureCollectionToGeojson(tile.content)
+                : tile.content;
+              tile._contentWGS84 = content.map(feature =>
+                transformTileCoordsToWGS84(feature, bbox)
+              );
+            }
+            return tile._contentWGS84;
+          }
+        });
+      }
+    });
+  }
+}
+
+function getFeatureUniqueId(feature: Feature, uniqueIdProperty: string | undefined) {
+  if (feature.properties && uniqueIdProperty) {
+    return feature.properties[uniqueIdProperty];
+  }
+
+  if ('id' in feature) {
+    return feature.id;
+  }
+
+  return undefined;
+}
+
+function getFeatureLayerName(feature: Feature): string | null {
+  return feature.properties?.layerName || null;
+}
+
+function isFeatureIdDefined(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function transformTileCoordsToWGS84(object: Feature, bbox: GeoBoundingBox): Feature {
+  const feature = {
+    ...object,
+    geometry: {
+      type: object.geometry.type
+    }
+  };
+
+  // eslint-disable-next-line accessor-pairs
+  Object.defineProperty(feature.geometry, 'coordinates', {
+    get: () => {
+      const wgs84Geom = transform(object.geometry, bbox);
+      return wgs84Geom.coordinates;
+    }
+  });
+
+  return feature as Feature;
+}

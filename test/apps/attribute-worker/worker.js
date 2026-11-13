@@ -1,6 +1,10 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 /* global fetch */
 import TEST_CASES from './test-cases';
-import {LayerManager} from '@deck.gl/core';
+import {LayerManager, Viewport} from '@deck.gl/core';
 import * as Layers from '@deck.gl/layers';
 
 export default self => {
@@ -9,6 +13,7 @@ export default self => {
     const testCase = TEST_CASES[id];
 
     fetchJSON(testCase.data).then(data => {
+      // eslint-disable-next-line import/namespace
       const LayerType = Layers[id];
       const {props, transferList} = getLayerSnapshot(new LayerType({...testCase, data}));
       self.postMessage(props, transferList);
@@ -21,7 +26,7 @@ function fetchJSON(url) {
 }
 
 function getLayerSnapshot(layer) {
-  const layerManager = new LayerManager();
+  const layerManager = new LayerManager(undefined, {viewport: new Viewport()});
   layerManager.setProps({layers: [layer]});
   layerManager.updateLayers();
 

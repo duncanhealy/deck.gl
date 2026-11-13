@@ -1,22 +1,42 @@
 import os
+import sys
 
-from .json_tools import JSONMixin
+from .json_tools import JSONMixin, serialize
 from .layer import Layer
 from ..io.html import deck_to_html
 from ..settings import settings as pydeck_settings
-from ..widget import DeckGLWidget
 from .view import View
 from .view_state import ViewState
 from .base_map_provider import BaseMapProvider
-from .map_styles import DARK, get_from_map_identifier
+from .map_styles import DARK, get_from_map_identifier, get_default_map_identifier
+
+# Special default value to for querying the default style for a map provider.
+_DEFAULT_MAP_STYLE_SENTINEL = "__MAP_STYLE__"
+
+
+def has_jupyter_extra():
+    try:
+        from ..widget import DeckGLWidget
+
+        DeckGLWidget()
+        return True
+    except (ImportError, NotImplementedError):
+        return False
+
+
+in_google_colab = "google.colab" in sys.modules
+
+# Distinguishes "controller not passed" from an explicit ``controller=None``
+_DEFAULT_CONTROLLER_SENTINEL = object()
 
 
 class Deck(JSONMixin):
     def __init__(
         self,
         layers=None,
-        views=[View(type="MapView", controller=True)],
-        map_style=DARK,
+        views=None,
+        controller=_DEFAULT_CONTROLLER_SENTINEL,
+        map_style=_DEFAULT_MAP_STYLE_SENTINEL,
         api_keys=None,
         initial_view_state=ViewState(latitude=0, longitude=0, zoom=1),
         width="100%",
@@ -26,9 +46,12 @@ class Deck(JSONMixin):
         effects=None,
         map_provider=BaseMapProvider.CARTO.value,
         parameters=None,
+        widgets=None,
+        show_error=False,
+        map_projection=None,
     ):
         """This is the renderer and configuration for a deck.gl visualization, similar to the
-        `Deck <https://deck.gl/#/documentation/deckgl-api-reference/deck>`_ class from deck.gl.
+        `Deck <https://deck.gl/docs/api-reference/core/deck>`_ class from deck.gl.
         Pass `Deck` a Mapbox API token to display a basemap; see the notes below.
 
         Parameters
@@ -36,18 +59,28 @@ class Deck(JSONMixin):
 
         layers : pydeck.Layer or list of pydeck.Layer, default None
             List of :class:`pydeck.bindings.layer.Layer` layers to render.
-        views : list of pydeck.View, default ``[pydeck.View(type="MapView", controller=True)]``
-            List of :class:`pydeck.bindings.view.View` objects to render.
+        views : list of pydeck.View, default None
+            List of :class:`pydeck.bindings.view.View` objects to render. Defaults to a single
+            full-screen ``MapView``.
+        controller : bool or dict, default True
+            Enables map interaction. ``False`` renders a static map; a dict passes deck.gl controller
+            options such as ``{"scrollZoom": False}``. Views in ``views`` carry their own ``controller``.
         api_keys : dict, default None
             Dictionary of geospatial API service providers, where the keys are ``mapbox``, ``google_maps``, or ``carto``
-            and the values are the API key. Defaults to None if not set. Any of the environment variables
-            ``MAPBOX_API_KEY``, ``GOOGLE_MAPS_API_KEY``, and ``CARTO_API_KEY`` can be set instead of hardcoding the key here.
+            and the values are the API key. Defaults to None if not set. Environment variables are checked automatically:
+            for Mapbox, ``MapboxAccessToken`` (deck.gl convention) or ``MAPBOX_API_KEY``; for Google Maps,
+            ``GoogleMapsAPIKey`` (deck.gl convention) or ``GOOGLE_MAPS_API_KEY``; for Carto, ``CARTO_API_KEY``.
+            The deck.gl convention is checked first, so if you already have ``MapboxAccessToken`` set for other
+            deck.gl projects, pydeck will pick it up.
         map_provider : str, default 'carto'
             If multiple API keys are set (e.g., both Mapbox and Google Maps), inform pydeck which basemap provider to prefer.
-            Values can be ``carto``, ``mapbox`` or ``google_maps``
-        map_style : str, default 'dark'
-            One of 'light', 'dark', 'road', 'satellite', 'dark_no_labels', and 'light_no_labels', or
-            URI for basemap style, which varies by provider. The default is Carto's Dark Matter map.
+            Values can be ``carto``, ``mapbox``, ``google_maps``, or ``maplibre``.
+        map_style : str or dict, default 'dark'
+            One of 'light', 'dark', 'road', 'satellite', 'dark_no_labels', and 'light_no_labels', a URI for a basemap
+            style, which varies by provider, or a dict that follows the Mapbox style `specification <https://docs.mapbox.com/mapbox-gl-js/style-spec/>`_.
+            If ``map_provider='google_maps'``, the default is the ``roadmap`` map type.
+            if ``map_provider='mapbox'``, the default is `Mapbox Dark <https://www.mapbox.com/maps/dark>`_ style.
+            Otherwise, the default is Carto's Dark Matter map.
             For Mapbox examples, see  Mapbox's `gallery <https://www.mapbox.com/gallery/>`_.
             If not using a basemap, set ``map_provider=None``.
         initial_view_state : pydeck.ViewState, default ``pydeck.ViewState(latitude=0, longitude=0, zoom=1)``
@@ -62,9 +95,20 @@ class Deck(JSONMixin):
             Layers must have ``pickable=True`` set in order to display a tooltip.
             For more advanced usage, the user can pass a dict to configure more custom tooltip features.
             Further documentation is `here <tooltip.html>`_.
+        effects : list of pydeck.Effect, default None
+            Lighting and post-processing effects applied to the rendered layers.
+        widgets : list of pydeck.Widget, default None
+            List of :class:`pydeck.bindings.widget.Widget` objects to render.
+        show_error : bool, default False
+            If ``True``, will display the error in the rendered output.
+            Otherwise, will only show error in browser console.
+        map_projection : str, default None
+            Map projection to use with ``map_provider='maplibre'``.
+            Values can be ``'globe'`` or ``'mercator'``. Defaults to ``'mercator'`` if not specified.
+            Only supported with ``map_provider='maplibre'``.
 
         .. _Deck:
-            https://deck.gl/#/documentation/deckgl-api-reference/deck
+            https://deck.gl/docs/api-reference/core/deck
         .. _gallery:
             https://www.mapbox.com/gallery/
         """
@@ -74,24 +118,46 @@ class Deck(JSONMixin):
         else:
             self.layers = layers or []
         self.views = views
+        if controller is _DEFAULT_CONTROLLER_SENTINEL:
+            # Explicit views carry their own controller settings
+            controller = True if views is None else None
+        self.controller = controller
+        self.widgets = widgets
         # Use passed view state
         self.initial_view_state = initial_view_state
-        self.deck_widget = DeckGLWidget()
-        self.deck_widget.custom_libraries = pydeck_settings.custom_libraries
-        api_keys = api_keys or {}
-        self._set_api_keys(api_keys)
 
-        self.deck_widget.height = height
-        self.deck_widget.width = width
-        self.deck_widget.tooltip = tooltip
+        api_keys = api_keys or {}
 
         self.description = description
         self.effects = effects
-
         self.map_provider = str(map_provider).lower() if map_provider else None
-        self.deck_widget.map_provider = map_provider
+        self.map_projection = map_projection
+        self._tooltip = tooltip
+        self._show_error = show_error
 
-        self.map_style = get_from_map_identifier(map_style, map_provider)
+        if has_jupyter_extra():
+            from ..widget import DeckGLWidget
+
+            self.deck_widget = DeckGLWidget()
+            self.deck_widget.custom_libraries = pydeck_settings.custom_libraries
+            self.deck_widget.configuration = pydeck_settings.configuration
+
+            self.deck_widget.height = height
+            self.deck_widget.width = width
+            self.deck_widget.tooltip = tooltip
+            self.deck_widget.map_provider = map_provider
+
+        self._set_api_keys(api_keys)
+
+        custom_map_style_error = "The map_provider parameter must be 'mapbox' when map_style is provided as a dict."
+
+        if isinstance(map_style, dict):
+            assert map_provider == BaseMapProvider.MAPBOX.value, custom_map_style_error
+            self.map_style = map_style
+        else:
+            if map_provider and map_style == _DEFAULT_MAP_STYLE_SENTINEL:
+                map_style = get_default_map_identifier(map_provider)
+            self.map_style = get_from_map_identifier(map_style, map_provider)
 
         self.parameters = parameters
 
@@ -101,21 +167,40 @@ class Deck(JSONMixin):
             return None
         return self.deck_widget.selected_data
 
+    # Mapping from provider to env var names, checked in order.
+    # deck.gl JS convention first, then pydeck convention.
+    _PROVIDER_ENV_VARS = {
+        BaseMapProvider.MAPBOX: ["MapboxAccessToken", "MAPBOX_API_KEY"],
+        BaseMapProvider.GOOGLE_MAPS: ["GoogleMapsAPIKey", "GOOGLE_MAPS_API_KEY"],
+        BaseMapProvider.CARTO: ["CARTO_API_KEY"],
+        BaseMapProvider.MAPLIBRE: [],
+    }
+
     def _set_api_keys(self, api_keys: dict = None):
         """Sets API key for base map provider for both HTML embedding and the Jupyter widget"""
         for k in api_keys:
             k and BaseMapProvider(k)
         for provider in BaseMapProvider:
             attr_name = f"{provider.value}_key"
-            provider_env_var = f"{provider.name}_API_KEY"
-            attr_value = api_keys.get(provider.value) or os.getenv(provider_env_var)
+            attr_value = api_keys.get(provider.value)
+            if not attr_value:
+                for env_var in self._PROVIDER_ENV_VARS.get(provider, []):
+                    attr_value = os.getenv(env_var)
+                    if attr_value:
+                        break
             setattr(self, attr_name, attr_value)
-            setattr(self.deck_widget, attr_name, attr_value)
+            if has_jupyter_extra():
+                setattr(self.deck_widget, attr_name, attr_value)
 
     def show(self):
         """Display current Deck object for a Jupyter notebook"""
-        self.update()
-        return self.deck_widget
+        # TODO: Jupyter-specific features not currently supported in pydeck v0.9.
+        # if in_google_colab:
+        #     self.to_html(notebook_display=True)
+        # else:
+        #     self.update()
+        #     return self.deck_widget
+        return self.to_html(notebook_display=True)
 
     def update(self):
         """Update a deck.gl map to reflect the current configuration
@@ -125,15 +210,21 @@ class Deck(JSONMixin):
 
         Intended for use in a Jupyter environment.
         """
-        self.deck_widget.json_input = self.to_json()
-        has_binary = False
-        binary_data_sets = []
-        for layer in self.layers:
-            if layer.use_binary_transport:
-                binary_data_sets.extend(layer.get_binary_data())
-                has_binary = True
-        if has_binary:
-            self.deck_widget.data_buffer = binary_data_sets
+        # TODO: Jupyter-specific features not currently supported in pydeck v0.9.
+        # if not has_jupyter_extra():
+        #     raise ImportError(
+        #         "Install the Jupyter extra for pydeck with your package manager, e.g. `pip install pydeck[jupyter]`"
+        #     )
+        # self.deck_widget.json_input = self.to_json()
+        # has_binary = False
+        # binary_data_sets = []
+        # for layer in self.layers:
+        #     if layer.use_binary_transport:
+        #         binary_data_sets.extend(layer.get_binary_data())
+        #         has_binary = True
+        # if has_binary:
+        #     self.deck_widget.data_buffer = binary_data_sets
+        raise NotImplementedError("Jupyter-specific features not currently supported in pydeck v0.9.")
 
     def to_html(
         self,
@@ -171,7 +262,7 @@ class Deck(JSONMixin):
         str
             Returns absolute path of the file
         """
-        deck_json = self.to_json()
+        deck_json = serialize(self, compact=True)
         f = deck_to_html(
             deck_json,
             mapbox_key=self.mapbox_key,
@@ -181,10 +272,12 @@ class Deck(JSONMixin):
             notebook_display=notebook_display,
             iframe_height=iframe_height,
             iframe_width=iframe_width,
-            tooltip=self.deck_widget.tooltip,
+            tooltip=self._tooltip,
             custom_libraries=pydeck_settings.custom_libraries,
+            configuration=pydeck_settings.configuration,
             as_string=as_string,
             offline=offline,
+            show_error=self._show_error,
             **kwargs,
         )
         return f
@@ -192,4 +285,5 @@ class Deck(JSONMixin):
     def _repr_html_(self):
         # doesn't actually need the HTML packaging in iframe_with_srcdoc,
         # so we just take the HTML.data part
-        return self.to_html(notebook_display=True).data
+        html = self.to_html(notebook_display=True)
+        return getattr(html, "data", "")

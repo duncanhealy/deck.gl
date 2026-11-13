@@ -1,5 +1,10 @@
-import test from 'tape-catch';
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import test from 'tape-promise/tape';
 import {testLayer, testInitializeLayer} from '@deck.gl/test-utils';
+// eslint-disable-next-line import/named
 import {JSONLayer} from '@deck.gl/json';
 import {configuration, JSON_DATA} from '../../../../test/modules/json/deck-json-converter.spec';
 
@@ -52,9 +57,7 @@ test('JSONLayer#lifecycle', t => {
 
 test('JSONLayer#fetch', t => {
   // polyfill/hijack fetch
-  /* global global, window */
-  const _global = typeof global !== 'undefined' ? global : window;
-  const fetch = _global.fetch;
+  const fetch = globalThis.fetch;
 
   const data = {
     'data.json': JSON.stringify([{position: [-122.45, 37.8], text: 'Hello World'}]),
@@ -62,7 +65,7 @@ test('JSONLayer#fetch', t => {
 -122.45,37.78,"Hello World"
 `
   };
-  _global.fetch = url =>
+  globalThis.fetch = url =>
     Promise.resolve({
       text: () => data[url]
     });
@@ -88,7 +91,7 @@ test('JSONLayer#fetch', t => {
   testInitializeLayer({layer: jsonLayer, onError: t.notOk});
 
   // Wait for fetch to resolve
-  _global.setTimeout(() => {
+  globalThis.setTimeout(() => {
     const subLayers = jsonLayer.renderLayers();
 
     t.deepEqual(
@@ -106,5 +109,28 @@ test('JSONLayer#fetch', t => {
   }, 0);
 
   // restore fetcch
-  _global.fetch = fetch;
+  globalThis.fetch = fetch;
+});
+
+test('JSONLayer#configurationOverride', t => {
+  class CustomTextLayer {}
+
+  const jsonLayer = new JSONLayer({
+    configuration: {
+      classes: {CustomTextLayer}
+    },
+    data: [
+      {
+        '@@type': 'CustomTextLayer',
+        id: 'custom-text-layer'
+      }
+    ]
+  });
+
+  testInitializeLayer({layer: jsonLayer, onError: t.notOk});
+
+  const subLayers = jsonLayer.renderLayers();
+  t.equal(subLayers.length, 1, 'Custom configuration creates one layer');
+  t.ok(subLayers[0] instanceof CustomTextLayer, 'Override configuration merges into defaults');
+  t.end();
 });

@@ -1,6 +1,11 @@
-/* global document, google */
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+/* global document */
 import {GoogleMapsOverlay as DeckOverlay} from '@deck.gl/google-maps';
 import {GeoJsonLayer, ArcLayer} from '@deck.gl/layers';
+import {Loader} from '@googlemaps/js-api-loader';
 
 // source: Natural Earth http://www.naturalearthdata.com/ via geojson.xyz
 const AIR_PORTS =
@@ -8,23 +13,15 @@ const AIR_PORTS =
 
 // Set your Google Maps API key here or via environment variable
 const GOOGLE_MAPS_API_KEY = process.env.GoogleMapsAPIKey; // eslint-disable-line
-const GOOGLE_MAPS_API_URL = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=visualization&v=3.39`;
+const GOOGLE_MAP_ID = process.env.GoogleMapsMapId; // eslint-disable-line
 
-function loadScript(url) {
-  const script = document.createElement('script');
-  script.type = 'text/javascript';
-  script.src = url;
-  const head = document.querySelector('head');
-  head.appendChild(script);
-  return new Promise(resolve => {
-    script.onload = resolve;
-  });
-}
+const loader = new Loader({apiKey: GOOGLE_MAPS_API_KEY});
 
-loadScript(GOOGLE_MAPS_API_URL).then(() => {
-  const map = new google.maps.Map(document.getElementById('map'), {
+loader.importLibrary('maps').then(googlemaps => {
+  const map = new googlemaps.Map(document.getElementById('map'), {
     center: {lat: 51.47, lng: 0.45},
-    zoom: 5
+    zoom: 5,
+    mapId: GOOGLE_MAP_ID
   });
 
   const overlay = new DeckOverlay({
@@ -36,7 +33,7 @@ loadScript(GOOGLE_MAPS_API_URL).then(() => {
         filled: true,
         pointRadiusMinPixels: 2,
         pointRadiusScale: 2000,
-        getRadius: f => 11 - f.properties.scalerank,
+        getPointRadius: f => 11 - f.properties.scalerank,
         getFillColor: [200, 0, 80, 180],
         // Interactive props
         pickable: true,

@@ -10,7 +10,6 @@ https://sketchfab.com/3d-models/choshi-otaki-falls-oirase-valley-aomori-ea1ef9e7
 import pydeck
 import pandas as pd
 
-
 DATA_URL = "https://raw.githubusercontent.com/ajduberstein/geo_datasets/master/small_waterfall.csv"
 df = pd.read_csv(DATA_URL)
 
@@ -27,8 +26,8 @@ point_cloud_layer = pydeck.Layer(
     point_size=3,
 )
 
-view_state = pydeck.ViewState(target=target, controller=True, rotation_x=15, rotation_orbit=30, zoom=5.3)
+view_state = pydeck.ViewState(target=target, rotation_x=15, rotation_orbit=30, zoom=5.3)
 view = pydeck.View(type="OrbitView", controller=True)
 
-r = pydeck.Deck(point_cloud_layer, initial_view_state=view_state, views=[view])
+r = pydeck.Deck(point_cloud_layer, initial_view_state=view_state, views=[view], map_provider=None)
 r.to_html("point_cloud_layer.html", css_background_color="#add8e6")

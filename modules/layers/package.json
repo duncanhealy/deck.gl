@@ -2,7 +2,8 @@
   "name": "@deck.gl/layers",
   "description": "deck.gl core layers",
   "license": "MIT",
-  "version": "8.5.0-alpha.4",
+  "type": "module",
+  "version": "10.0.0-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -15,26 +16,52 @@
     "type": "git",
     "url": "https://github.com/visgl/deck.gl.git"
   },
-  "main": "dist/es5/index.js",
-  "module": "dist/esm/index.js",
+  "bugs": {
+    "url": "https://github.com/visgl/deck.gl/issues"
+  },
+  "homepage": "https://deck.gl",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "visgl:webgl-only": {
+        "import": "./dist.webgl-only/index.js",
+        "require": "./dist.webgl-only/index.cjs"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist",
+    "dist.webgl-only",
     "src",
     "dist.min.js"
   ],
   "sideEffects": false,
   "scripts": {
-    "build-bundle": "webpack --config ../../scripts/bundle.config.js",
-    "prepublishOnly": "npm run build-bundle && npm run build-bundle -- --env.dev"
+    "build-bundle": "ocular-bundle ./bundle/index.ts",
+    "prepublishOnly": "npm run build-bundle && npm run build-bundle -- --env=dev"
   },
   "dependencies": {
-    "@loaders.gl/images": "^3.0.0-alpha",
-    "@mapbox/tiny-sdf": "^1.1.0",
-    "@math.gl/polygon": "^3.4.2",
-    "earcut": "^2.0.6"
+    "@loaders.gl/core": "5.0.0-beta.8",
+    "@loaders.gl/images": "5.0.0-beta.8",
+    "@luma.gl/graph": "10.0.0-alpha.14",
+    "@luma.gl/shaders": "10.0.0-alpha.14",
+    "@mapbox/tiny-sdf": "^2.0.5",
+    "@math.gl/core": "5.0.0-beta.8",
+    "@math.gl/geometry": "5.0.0-beta.8",
+    "@math.gl/web-mercator": "5.0.0-beta.8",
+    "@types/geojson": "^7946.0.16",
+    "earcut": "^2.2.4"
   },
   "peerDependencies": {
-    "@deck.gl/core": "^8.0.0",
-    "@loaders.gl/core": "^3.0.0-alpha"
-  }
+    "@deck.gl/core": "~10.0.0-alpha",
+    "@loaders.gl/core": "5.0.0-beta.8",
+    "@luma.gl/core": "10.0.0-alpha.14",
+    "@luma.gl/engine": "10.0.0-alpha.14"
+  },
+  "gitHead": "13ace64fc2cee08c133afc882fc307253489a4e4"
 }

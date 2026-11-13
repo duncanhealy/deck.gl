@@ -1,0 +1,454 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect} from 'vitest';
+import {convertGeojsonToBinaryFeatureCollection} from '@loaders.gl/core/geoarrow';
+import {processPickInfo} from '@deck.gl/core/lib/picking/pick-info';
+import {LayerManager, WebMercatorViewport, DeckRenderer} from '@deck.gl/core';
+import {ScatterplotLayer, GeoJsonLayer} from '@deck.gl/layers';
+import {MVTLayer} from '@deck.gl/geo-layers';
+import {device} from '@deck.gl/test-utils/vitest';
+
+import {equals} from '@math.gl/core';
+
+const testLayer = new ScatterplotLayer({
+  id: 'test-layer',
+  data: ['a', 'b'],
+  getPosition: d => [0, 0],
+  autoHighlight: true
+});
+
+const testLayerWithCallback = new ScatterplotLayer({
+  id: 'test-layer-with-callback',
+  data: ['a', 'b'],
+  getPosition: d => [0, 0],
+  autoHighlight: true,
+  highlightColor: ({object}) => (object === 'b' ? [255, 0, 0] : [0, 255, 0])
+});
+
+const testCompositeLayer = new GeoJsonLayer({
+  id: 'test-composite-layer',
+  data: [{type: 'Feature', geometry: {type: 'Point', coordinates: [0, 0]}}]
+});
+
+const geoJSONData = [
+  {
+    id: 12,
+    type: 'Feature',
+    geometry: {type: 'Point', coordinates: [0, 0]},
+    properties: {layerName: 'layerA'}
+  },
+  {
+    id: 12,
+    type: 'Feature',
+    geometry: {type: 'Point', coordinates: [0, 0]},
+    properties: {layerName: 'layerB'}
+  }
+];
+
+class TestMVTLayer extends MVTLayer {
+  getTileData() {
+    return this.props.binary ? geoJSONBinaryData : geoJSONData;
+  }
+}
+
+TestMVTLayer.layerName = 'TestMVTLayer';
+
+const testMVTLayer = new TestMVTLayer({
+  id: 'test-mvt-layer',
+  autoHighlight: true,
+  binary: false,
+  data: ['https://json/{z}/{x}/{y}.mvt']
+});
+
+const geoJSONBinaryData = convertGeojsonToBinaryFeatureCollection(
+  JSON.parse(JSON.stringify(geoJSONData))
+);
+geoJSONBinaryData.points.fields = geoJSONData.map(({id}) => ({id}));
+
+const testMVTLayerBinary = new TestMVTLayer({
+  id: 'test-mvt-layer-binary',
+  autoHighlight: true,
+  binary: true,
+  data: ['https://binary/{z}/{x}/{y}.mvt']
+});
+
+const parameters = {
+  mode: 'hover',
+  viewports: [
+    new WebMercatorViewport({
+      id: 'map1',
+      longitude: -122,
+      latitude: 38,
+      zoom: 1,
+      width: 200,
+      height: 200
+    }),
+    new WebMercatorViewport({
+      id: 'map2',
+      longitude: -122,
+      latitude: 38,
+      zoom: 1,
+      x: 200,
+      y: 0,
+      width: 200,
+      height: 200
+    }),
+    new WebMercatorViewport({
+      id: 'minimap',
+      longitude: -100,
+      latitude: 40,
+      zoom: 1,
+      x: 250,
+      y: 50,
+      width: 100,
+      height: 100
+    })
+  ],
+  layers: [testLayer, testLayerWithCallback, testCompositeLayer, testMVTLayer, testMVTLayerBinary],
+  pixelRatio: 2
+};
+
+function validateUniforms(actual, expected) {
+  for (const key in expected) {
+    if (!equals(actual[key], expected[key])) {
+      return {key, expected: expected[key], actual: actual[key]};
+    }
+  }
+  return null;
+}
+
+/* eslint-disable max-statements */
+test('processPickInfo', async () => {
+  const layerManager = new LayerManager(device, {viewport: parameters.viewports[0]});
+  layerManager.setProps({onError: err => expect(err).toBeFalsy()});
+  const deckRenderer = new DeckRenderer(device);
+
+  layerManager.setLayers(parameters.layers);
+
+  while (!parameters.layers.every(l => l.isLoaded)) {
+    layerManager.updateLayers();
+
+    deckRenderer.renderLayers({
+      viewports: [layerManager.context.viewport],
+      layers: layerManager.getLayers(),
+      onViewportActive: layerManager.activateViewport
+    });
+    await sleep(100);
+  }
+
+  // Async tile loads can flip `layer.isLoaded` before a final render pass has materialized
+  // the tile-backed GeoJson sublayers. Run one more update/render cycle against the now-loaded
+  // tiles so the live MVT picking layers exist before processPickInfo is exercised.
+  layerManager.updateLayers();
+  deckRenderer.renderLayers({
+    viewports: [layerManager.context.viewport],
+    layers: layerManager.getLayers(),
+    onViewportActive: layerManager.activateViewport
+  });
+
+  const renderedLayers = layerManager.getLayers();
+  const compositePointLayer = renderedLayers.find(
+    layer => layer.id === 'test-composite-layer-points-circle'
+  );
+  const mvtPointLayer = renderedLayers.find(
+    layer => layer.id === 'test-mvt-layer-0-0-1-points-circle'
+  );
+  const mvtPointLayerBinary = renderedLayers.find(
+    layer => layer.id === 'test-mvt-layer-binary-0-0-1-points-circle'
+  );
+
+  expect(compositePointLayer, 'GeoJson sublayer is available').toBeTruthy();
+  expect(mvtPointLayer, 'MVT sublayer is available').toBeTruthy();
+  expect(mvtPointLayerBinary, 'Binary MVT sublayer is available').toBeTruthy();
+
+  const TEST_CASES = [
+    {
+      pickInfo: {
+        pickedColor: null,
+        pickedLayer: null,
+        pickedObjectIndex: -1
+      },
+      x: 100,
+      y: 100,
+      size: 1,
+      info: {layer: null, index: -1, picked: false, x: 100, coordinate: [-122, 38]},
+      lastPickedInfo: {layerId: null, index: -1},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: testLayer,
+        pickedObjectIndex: 0
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {layer: testLayer, object: 'a', index: 0, picked: true, x: 100, coordinate: [-122, 38]},
+      lastPickedInfo: {layerId: 'test-layer', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: true, highlightedObjectColor: [1, 0, 0]}
+    },
+    {
+      pickInfo: {
+        pickedColor: [2, 0, 0, 0],
+        pickedLayer: testLayer,
+        pickedObjectIndex: 1
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {layer: testLayer, object: 'b'},
+      lastPickedInfo: {layerId: 'test-layer', index: 1},
+      testLayerPickingUniforms: {isHighlightActive: true, highlightedObjectColor: [2, 0, 0]}
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: testLayerWithCallback,
+        pickedViewports: parameters.viewports.slice(0, 2),
+        pickedObjectIndex: 0
+      },
+      x: 100,
+      y: 100,
+      size: 3,
+      info: {
+        layer: testLayerWithCallback,
+        object: 'a',
+        index: 0,
+        picked: true,
+        x: 100,
+        coordinate: [-122, 38]
+      },
+      lastPickedInfo: {layerId: 'test-layer-with-callback', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: false},
+      currentLayerPickingUniforms: {
+        isHighlightActive: true,
+        highlightedObjectColor: [1, 0, 0],
+        highlightColor: [0, 1, 0, 1]
+      }
+    },
+    {
+      pickInfo: {
+        pickedColor: [2, 0, 0, 0],
+        pickedLayer: testLayerWithCallback,
+        pickedViewports: parameters.viewports.slice(0, 2),
+        pickedObjectIndex: 1
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {layer: testLayerWithCallback, object: 'b'},
+      lastPickedInfo: {layerId: 'test-layer-with-callback', index: 1},
+      testLayerPickingUniforms: {isHighlightActive: false},
+      currentLayerPickingUniforms: {
+        isHighlightActive: true,
+        highlightedObjectColor: [2, 0, 0],
+        highlightColor: [1, 0, 0, 1]
+      }
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: compositePointLayer,
+        pickedObjectIndex: 0
+      },
+      x: 100,
+      y: 100,
+      size: 3,
+      info: {
+        layer: testCompositeLayer,
+        object: {type: 'Feature', geometry: {type: 'Point', coordinates: [0, 0]}}
+      },
+      lastPickedInfo: {layerId: 'test-composite-layer-points-circle', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: mvtPointLayer,
+        pickedObjectIndex: 0
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {
+        layer: testMVTLayer,
+        object: {
+          id: 12,
+          type: 'Feature',
+          geometry: {type: 'Point'},
+          properties: {layerName: 'layerA'}
+        }
+      },
+      highlightedObjectIndex: 0,
+      lastPickedInfo: {layerId: 'test-mvt-layer-0-0-1-points-circle', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [2, 0, 0, 0],
+        pickedLayer: mvtPointLayer,
+        pickedObjectIndex: 1
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {
+        layer: testMVTLayer,
+        object: {
+          id: 12,
+          type: 'Feature',
+          geometry: {type: 'Point'},
+          properties: {layerName: 'layerB'}
+        }
+      },
+      highlightedObjectIndex: 1,
+      lastPickedInfo: {layerId: 'test-mvt-layer-0-0-1-points-circle', index: 1},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: mvtPointLayerBinary,
+        pickedObjectIndex: 0
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {
+        layer: testMVTLayerBinary,
+        object: {
+          id: 12,
+          type: 'Feature',
+          geometry: {type: 'Point'},
+          properties: {layerName: 'layerA'}
+        }
+      },
+      highlightedObjectIndex: 0,
+      lastPickedInfo: {layerId: 'test-mvt-layer-binary-0-0-1-points-circle', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [2, 0, 0, 0],
+        pickedLayer: mvtPointLayerBinary,
+        pickedObjectIndex: 1
+      },
+      x: 100,
+      y: 100,
+      size: 2,
+      info: {
+        layer: testMVTLayerBinary,
+        object: {
+          id: 12,
+          type: 'Feature',
+          geometry: {type: 'Point'},
+          properties: {layerName: 'layerB'}
+        }
+      },
+      highlightedObjectIndex: 1,
+      lastPickedInfo: {layerId: 'test-mvt-layer-binary-0-0-1-points-circle', index: 1},
+      testLayerPickingUniforms: {isHighlightActive: false}
+    },
+    {
+      pickInfo: {
+        pickedColor: [1, 0, 0, 0],
+        pickedLayer: testLayer,
+        pickedObjectIndex: 0
+      },
+      x: 300,
+      y: 100,
+      size: 2,
+      info: {layer: testLayer, object: 'a', index: 0, picked: true, x: 300, coordinate: [-100, 40]},
+      lastPickedInfo: {layerId: 'test-layer', index: 0},
+      testLayerPickingUniforms: {isHighlightActive: true, highlightedObjectColor: [1, 0, 0]}
+    },
+    {
+      pickInfo: {
+        pickedColor: [2, 0, 0, 0],
+        pickedLayer: testLayerWithCallback,
+        pickedViewports: parameters.viewports.slice(0, 2),
+        pickedObjectIndex: 1
+      },
+      x: 300,
+      y: 100,
+      size: 3,
+      info: {layer: testLayerWithCallback, object: 'b', x: 300, coordinate: [-122, 38]},
+      lastPickedInfo: {layerId: 'test-layer-with-callback', index: 1},
+      testLayerPickingUniforms: {isHighlightActive: false, highlightedObjectColor: [1, 0, 0]}
+    },
+    {
+      pickInfo: {
+        pickedColor: [0, 0, 0, 0],
+        pickedLayer: null,
+        pickedObjectIndex: -1
+      },
+      x: -1,
+      y: -1,
+      size: 2,
+      info: {layer: testLayerWithCallback, x: -1, viewport: parameters.viewports[0]},
+      lastPickedInfo: {layerId: null, index: -1},
+      testLayerPickingUniforms: {isHighlightActive: false, highlightedObjectColor: [1, 0, 0]}
+    }
+  ];
+
+  const lastPickedInfo = {};
+  parameters.lastPickedInfo = lastPickedInfo;
+
+  let testLayerPickingUniforms, currentLayerPickingUniforms;
+
+  for (const testCase of TEST_CASES) {
+    parameters.pickInfo = testCase.pickInfo;
+    parameters.x = testCase.x;
+    parameters.y = testCase.y;
+    const infos = processPickInfo(parameters);
+    expect(infos.size, 'returns expected infos').toBe(testCase.size);
+
+    const info = infos.get(testCase.info.layer && testCase.info.layer.id);
+
+    for (const key in testCase.info) {
+      const expected = testCase.info[key];
+      if (Number.isFinite(expected) || Array.isArray(expected)) {
+        expect(equals(info[key], expected), `info.${key}`).toBeTruthy();
+      } else {
+        expect(info[key], `info.${key}`).toEqual(expected);
+      }
+    }
+    for (const key in testCase.lastPickedInfo) {
+      expect(lastPickedInfo[key], `lastPickedInfo.${key}`).toEqual(testCase.lastPickedInfo[key]);
+    }
+    testLayerPickingUniforms = testLayer.getModels()[0].shaderInputs.getUniformValues().picking;
+    expect(
+      validateUniforms(testLayerPickingUniforms, testCase.testLayerPickingUniforms),
+      'testLayerPickingUniforms'
+    ).toBeFalsy();
+    if (testCase.currentLayerPickingUniforms) {
+      currentLayerPickingUniforms = testCase.pickInfo.pickedLayer
+        .getModels()[0]
+        .shaderInputs.getUniformValues().picking;
+      expect(
+        validateUniforms(currentLayerPickingUniforms, testCase.currentLayerPickingUniforms),
+        'currentLayerPickingUniforms'
+      ).toBeFalsy();
+    }
+
+    if (testCase.highlightedObjectIndex !== undefined) {
+      const renderedLayer = info.layer.renderLayers()[0][0];
+      const {highlightedObjectIndex} = renderedLayer.props;
+      expect(highlightedObjectIndex, 'highlightObjectIndex').toEqual(
+        testCase.highlightedObjectIndex
+      );
+    }
+  }
+
+  layerManager.finalize();
+});
+
+function sleep(ms) {
+  return new Promise(resolve => {
+    /* global setTimeout */
+    setTimeout(resolve, ms);
+  });
+}

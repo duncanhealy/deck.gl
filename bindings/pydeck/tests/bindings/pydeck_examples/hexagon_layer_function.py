@@ -57,7 +57,11 @@ def create_heatmap_test_object():
     )
     # This will render
     successful_heatmap_layer = Layer(
-        type="HeatmapLayer", id="successful-heatmap", data=data, get_position=["lon", "lat"], color_range=color_range,
+        type="HeatmapLayer",
+        id="successful-heatmap",
+        data=data,
+        get_position=["lon", "lat"],
+        color_range=color_range,
     )
 
     return Deck(
@@ -65,7 +69,6 @@ def create_heatmap_test_object():
         initial_view_state=ViewState(
             **{"longitude": 0, "latitude": 0, "zoom": 5, "pitch": 40.5, "bearing": -27.396674584323023}
         ),
-        views=[View(type="MapView", controller=True)],
         layers=[failed_hexagon_layer, successful_heatmap_layer],
         map_style=None,
     )

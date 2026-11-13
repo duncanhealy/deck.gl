@@ -1,55 +1,143 @@
-import {PointCloudLayerDemo} from 'website-components/doc-demos/layers';
+---
+description: "PointCloudLayer renders 3D point clouds with optional normals and per-point colors."
+---
+
+# PointCloudLayer
+![webgpu](https://img.shields.io/badge/webgpu-supported-blue.svg?style=flat-square)
+
+import {PointCloudLayerDemo} from '@site/src/doc-demos/layers';
 
 <PointCloudLayerDemo />
 
-<p class="badges">
-  <img src="https://img.shields.io/badge/lighting-yes-blue.svg?style=flat-square" alt="lighting" />
-</p>
+The `PointCloudLayer` renders a point cloud with 3D positions, normals and colors.
 
-# PointCloudLayer
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-The Point Cloud Layer takes in points with 3d positions, normals and colors
-and renders them as spheres with a certain radius.
+<Tabs groupId="language">
+  <TabItem value="js" label="JavaScript">
 
 ```js
-import DeckGL from '@deck.gl/react';
+import {Deck} from '@deck.gl/core';
 import {PointCloudLayer} from '@deck.gl/layers';
 
-function App({data, viewState}) {
-  /**
-   * Data format:
-   * [
-   *   {position: [-122.4, 37.7, 12], normal: [-1, 0, 0], color: [255, 255, 0]},
-   *   ...
-   * ]
-   */
-  const layer = new PointCloudLayer({
-    id: 'point-cloud-layer',
-    data,
-    pickable: false,
-    coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
+const layer = new PointCloudLayer({
+  id: 'PointCloudLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/pointcloud.json',
+  
+  getColor: d => d.color,
+  getNormal: d => d.normal,
+  getPosition: d => d.position,
+  pointSize: 2,
+  coordinateOrigin: [-122.4, 37.74],
+  coordinateSystem: 'meter-offsets',
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}) => object && object.position.join(', '),
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck, PickingInfo} from '@deck.gl/core';
+import {PointCloudLayer} from '@deck.gl/layers';
+
+type DataType = {
+  position: [x: number, y: number, z: number];
+  normal: [nx: number, ny: number, nz: number];
+  color: [r: number, g: number, b: number];
+};
+
+const layer = new PointCloudLayer<DataType>({
+  id: 'PointCloudLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/pointcloud.json',
+  
+  getColor: (d: DataType) => d.color,
+  getNormal: (d: DataType) => d.normal,
+  getPosition: (d: DataType) => d.position,
+  pointSize: 2,
+  coordinateOrigin: [-122.4, 37.74],
+  coordinateSystem: 'meter-offsets',
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}: PickingInfo<DataType>) => object && object.position.join(', '),
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {PointCloudLayer} from '@deck.gl/layers';
+import type {PickingInfo} from '@deck.gl/core';
+
+type DataType = {
+  position: [x: number, y: number, z: number];
+  normal: [nx: number, ny: number, nz: number];
+  color: [r: number, g: number, b: number];
+};
+
+function App() {
+  const layer = new PointCloudLayer<DataType>({
+    id: 'PointCloudLayer',
+    data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/pointcloud.json',
+    
+    getColor: (d: DataType) => d.color,
+    getNormal: (d: DataType) => d.normal,
+    getPosition: (d: DataType) => d.position,
+    pointSize: 2,
     coordinateOrigin: [-122.4, 37.74],
-    radiusPixels: 4,
-    getPosition: d => d.position,
-    getNormal: d => d.normal,
-    getColor: d => d.color
+    coordinateSystem: 'meter-offsets',
+    pickable: true
   });
 
-  return <DeckGL viewState={viewState}
+  return <DeckGL
+    initialViewState={{
+      longitude: -122.4,
+      latitude: 37.74,
+      zoom: 11
+    }}
+    controller
+    getTooltip={({object}: PickingInfo<DataType>) => object && object.position.join(', ')}
     layers={[layer]}
-    getTooltip={({object}) => object && object.position.join(', ')} />;
+  />;
 }
 ```
 
+  </TabItem>
+</Tabs>
+
+
 `loaders.gl` offers a [category](https://loaders.gl/docs/specifications/category-mesh) of loaders for loading point clouds from standard formats. For example, the following code adds support for LAS/LAZ files:
 
-```js
+```ts
 import {PointCloudLayer} from '@deck.gl/layers';
-import {LASLoader} from '@loaders.gl/las';
+import {LASLoader} from '@loaders.gl/pointclouds/las';
 
 new PointCloudLayer({
-  ...
-  mesh: 'path/to/pointcloud.laz',
+  data: 'path/to/pointcloud.laz',
   loaders: [LASLoader]
 });
 ```
@@ -64,18 +152,20 @@ npm install deck.gl
 npm install @deck.gl/core @deck.gl/layers
 ```
 
-```js
+```ts
 import {PointCloudLayer} from '@deck.gl/layers';
-new PointCloudLayer({});
+import type {PointCloudLayerProps} from '@deck.gl/layers';
+
+new PointCloudLayer<DataT>(...props: PointCloudLayerProps<DataT>[]);
 ```
 
 To use pre-bundled scripts:
 
 ```html
-<script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^8.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/layers@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@^9.0.0/dist.min.js"></script>
 ```
 
 ```js
@@ -84,38 +174,68 @@ new deck.PointCloudLayer({});
 
 ## Properties
 
-Inherits from all [Base Layer](/docs/api-reference/core/layer.md) properties.
+Inherits from all [Base Layer](../core/layer.md) properties.
 
 ### Render Options
 
-##### `sizeUnits` (String, optional)
+#### `sizeUnits` (string, optional) {#sizeunits}
 
 * Default: `'pixels'`
 
-The units of the point size, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+The units of the point size, one of `'meters'`, `'common'`, and `'pixels'`. See [unit system](../../developer-guide/coordinate-systems.md#supported-units).
 
-##### `pointSize` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `pointSize` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#pointsize}
 
 * Default: `10`
 
 Global radius of all points, in units specified by `sizeUnits` (default pixels).
 
-##### `material` (Object, optional)
+#### `antialiasing` (boolean, optional) {#antialiasing}
+
+* Default: `false`
+
+When enabled, this prop computes edge coverage in the shader. When disabled, the layer relies on render-target multisampling. Shader-computed coverage can cause artifacts where points overlap.
+
+Other antialiasing techniques have different trade-offs; see [Antialiasing and Multisampling](https://luma.gl/docs/api-guide/gpu/gpu-antialiasing) in the luma.gl docs.
+
+#### `material` (Material, optional) {#material}
 
 * Default: `true`
 
-This is an object that contains material props for [lighting effect](/docs/api-reference/core/lighting-effect.md) applied on extruded polygons.
-Check [the lighting guide](/docs/developer-guide/using-lighting.md#constructing-a-material-instance) for configurable settings.
+This is an object that contains material props for [lighting effect](../core/lighting-effect.md) applied on extruded polygons.
+Check [the lighting guide](../../developer-guide/using-effects.md#material-settings) for configurable settings.
+
+### Arrow Columns
+
+See [Using with Arrow](../../developer-guide/using-with-arrow.md) for shared input requirements and limitations.
+
+#### `positions` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric XY or XYZ fixed-size lists specifying point positions. Overrides [`getPosition`](#getposition).
+
+#### `normals` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric XYZ fixed-size lists specifying point normals. Overrides [`getNormal`](#getnormal).
+
+#### `colors` (Arrow Vector, optional)
+
+* Default: `null`
+
+RGB or RGBA fixed-size lists specifying point colors. Overrides [`getColor`](#getcolor).
 
 ### Data Accessors
 
-##### `getPosition` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getPosition` ([Accessor&lt;Position&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getposition}
 
 * Default: `object => object.position`
 
 Method called to retrieve the position of each object.
 
-##### `getNormal` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getNormal` ([Accessor&lt;number[3]&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getnormal}
 
 * Default: `[0, 0, 1]`
 
@@ -125,7 +245,7 @@ The normal of each object, in `[nx, ny, nz]`.
 * If a function is provided, it is called on each object to retrieve its normal.
 
 
-##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getcolor}
 
 * Default: `[0, 0, 0, 255]`
 

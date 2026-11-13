@@ -1,10 +1,10 @@
 # MapController
 
-Inherits from [Base Controller](/docs/api-reference/core/controller.md).
+Inherits from [Base Controller](./controller.md).
 
-The `MapController` class can be passed to either the `Deck` class's [controller](/docs/api-reference/core/deck.md#controller) prop or a `View` class's [controller](/docs/api-reference/core/view.md#controller) prop to specify that map interaction should be enabled.
+The `MapController` class can be passed to either the `Deck` class's [controller](./deck.md#controller) prop or a `View` class's [controller](./view.md#controller) prop to specify that map interaction should be enabled.
 
-`MapController` is the default controller for [MapView](/docs/api-reference/core/map-view.md)..
+`MapController` is the default controller for [MapView](./map-view.md)..
 
 ## Usage
 
@@ -34,10 +34,18 @@ new Deck({
 
 ## Options
 
-Supports all [Controller options](/docs/api-reference/core/controller.md#options) with the following default behavior:
+Supports all [Controller options](./controller.md#options) with the following default behavior:
 
 - `dragMode` - default `'pan'` (drag to pan, shift/ctrl + drag to rotate)
 - `keyboard` - arrow keys to pan, arrow keys with shift/ctrl down to rotate, +/- to zoom
+- `normalize` - normalize viewport props to fit map height into viewport. Default `true`
+- `maxBounds` - constrains the viewport to the specified geographic bounding box `[[minLng, minLat], [maxLng, maxLat]]`
+- `maxBoundsPadding` - padding inside the viewport when fitting `maxBounds`, using the same `{left, right, top, bottom}` format as view padding. Numeric values are pixels; strings may be percentages or layout expressions such as `calc(10% - 4px)`. Each side is measured from the projected map center. Default `0`.
+- `rubberBand` (boolean) - allows continuous pan and zoom interactions to temporarily overshoot `maxBounds`, `minZoom`, and `maxZoom` with increasing resistance. On release, the view returns within constraints using a 300 ms exponential ease-out independently of `inertia`. Default `false`.
+- `rotationPivot` (string, optional) - Determines the pivot point used when rotating the map. Default `'center'`. Supported values:
+  - `'center'` - Rotate around the center of the viewport.
+  - `'2d'` - Rotate around the pointer position projected onto the ground plane (z=0).
+  - `'3d'` - Rotate around the picked object under the pointer. Falls back to `'center'` behavior if no pickable object is found. Requires at least one layer with `pickable: '3d'`.
 
 ## Custom MapController
 
@@ -63,9 +71,9 @@ new Deck({
 })
 ```
 
-See the `Controller` class [documentation](/docs/api-reference/core/controller.md#methods) for the methods that you can use and/or override.
+See the `Controller` class [documentation](./controller.md#methods) for the methods that you can use and/or override.
 
 
 ## Source
 
-[modules/core/src/controllers/map-controller.js](https://github.com/visgl/deck.gl/blob/master/modules/core/src/controllers/map-controller.js)
+[modules/core/src/controllers/map-controller.ts](https://github.com/visgl/deck.gl/blob/master/modules/core/src/controllers/map-controller.ts)

@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "start": "vite --open",
+    "start-local": "vite --config ../vite.config.local.mjs"
+  },
+  "dependencies": {
+    "@math.gl/core": "5.0.0-beta.8",
+    "@turf/circle": "6.5.0",
+    "deck.gl": "^8.4.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}

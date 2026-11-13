@@ -1,0 +1,206 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect} from 'vitest';
+
+// import {COORDINATE_SYSTEM, Viewport, WebMercatorViewport} from 'deck.gl';
+import {WebMercatorViewport, project32} from '@deck.gl/core';
+import {project64} from '@deck.gl/extensions';
+// import {Matrix4, config} from '@math.gl/core';
+import {config, NumberArray3} from '@math.gl/core';
+import {fp64} from '@luma.gl/shaders';
+const {fp64LowPart} = fp64;
+import {getPixelOffset, runOnGPU, testUniforms, verifyGPUResult} from './project-glsl-test-utils';
+import {TestCase} from './project-glsl.spec';
+import {device} from '@deck.gl/test-utils/vitest';
+
+const PIXEL_TOLERANCE = 0.001;
+const webglTest = device.type === 'webgl' ? test : test.skip;
+
+const TEST_VIEWPORT = new WebMercatorViewport({
+  longitude: -122,
+  latitude: 38,
+  zoom: 10,
+  pitch: 20,
+  bearing: -35,
+  width: 800,
+  height: 600
+});
+
+const TEST_VIEWPORT_HIGH_ZOOM = new WebMercatorViewport({
+  longitude: -122,
+  latitude: 38,
+  zoom: 16,
+  pitch: 60,
+  bearing: 75,
+  width: 800,
+  height: 600
+});
+
+const TRANSFORM_VS = {
+  project_position_to_clipspace: `\
+#version 300 es
+
+out vec3 outValue;
+
+void main()
+{
+  geometry.worldPosition = test.uPos;
+  vec4 glPos = project_position_to_clipspace(test.uPos, test.uPos64Low, vec3(0, 0, 0));
+  outValue = glPos.xyz / glPos.w;
+  outValue = vec3(
+    (1.0 + outValue.x) / 2.0 * project.viewportSize.x,
+    (1.0 - outValue.y) / 2.0 * project.viewportSize.y,
+    outValue.z
+  );
+}
+`,
+  project_position_to_clipspace_world_position: `\
+#version 300 es
+
+out vec4 outValue;
+
+void main()
+{
+  geometry.worldPosition = test.uPos;
+  project_position_to_clipspace(test.uPos, test.uPos64Low, vec3(0, 0, 0), outValue);
+}
+`
+};
+
+const TEST_CASES: TestCase[] = [
+  {
+    title: 'LNGLAT mode',
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'lnglat'
+    },
+    tests: [
+      {
+        name: 'project_position_to_clipspace_world_position',
+        vs: TRANSFORM_VS.project_position_to_clipspace_world_position,
+        testProps: {uPos: [-122.45, 37.78, 0]},
+        output: TEST_VIEWPORT.projectFlat([-122.45, 37.78]).concat([0, 1])
+      },
+      {
+        name: 'project_position_to_clipspace',
+        vs: TRANSFORM_VS.project_position_to_clipspace,
+        testProps: {uPos: [-122.45, 37.78, 0]},
+        output: TEST_VIEWPORT.project([-122.45, 37.78, 0]),
+        precision: PIXEL_TOLERANCE
+      },
+      {
+        name: 'project_position_to_clipspace (non-zero Z)',
+        vs: TRANSFORM_VS.project_position_to_clipspace,
+        testProps: {uPos: [-122.45, 37.78, 100]},
+        output: TEST_VIEWPORT.project([-122.45, 37.78, 100]),
+        precision: PIXEL_TOLERANCE
+      }
+    ]
+  },
+  {
+    title: 'LNGLAT mode - high zoom',
+    projectProps: {
+      viewport: TEST_VIEWPORT_HIGH_ZOOM,
+      coordinateSystem: 'lnglat'
+    },
+    tests: [
+      {
+        name: 'project_position_to_clipspace_world_position',
+        vs: TRANSFORM_VS.project_position_to_clipspace_world_position,
+        testProps: {uPos: [-122.05, 37.92, 0]},
+        output: TEST_VIEWPORT_HIGH_ZOOM.projectFlat([-122.05, 37.92])
+          .map((x, i) => x - TEST_VIEWPORT_HIGH_ZOOM.center[i])
+          .concat([0, 1]),
+        output64: TEST_VIEWPORT_HIGH_ZOOM.projectFlat([-122.05, 37.92]).concat([0, 1])
+      },
+      {
+        name: 'project_position_to_clipspace',
+        vs: TRANSFORM_VS.project_position_to_clipspace,
+        testProps: {uPos: [-122.05, 37.92, 0]},
+        output: TEST_VIEWPORT_HIGH_ZOOM.project([-122.05, 37.92, 0]),
+        precision: PIXEL_TOLERANCE
+      }
+    ]
+  },
+  {
+    title: 'LNGLAT_OFFSETS mode',
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'lnglat-offsets',
+      coordinateOrigin: [-122.05, 37.92, 0]
+    },
+    tests: [
+      {
+        name: 'project_position_to_clipspace_world_position',
+        vs: TRANSFORM_VS.project_position_to_clipspace_world_position,
+        testProps: {uPos: [0.05, 0.08, 0]},
+        output: getPixelOffset(
+          TEST_VIEWPORT.projectPosition([-122, 38, 0]),
+          TEST_VIEWPORT.projectPosition([-122.05, 37.92, 0])
+        )
+      },
+      {
+        name: 'project_position_to_clipspace',
+        vs: TRANSFORM_VS.project_position_to_clipspace,
+        testProps: {uPos: [0.05, 0.08, 0]},
+        output: TEST_VIEWPORT.project([-122, 38, 0]),
+        precision: PIXEL_TOLERANCE
+      }
+    ]
+  }
+];
+
+webglTest('project32&64#vs', async () => {
+  const oldEpsilon = config.EPSILON;
+
+  try {
+    for (const usefp64 of [false, true]) {
+      /* eslint-disable max-nested-callbacks, complexity */
+      for (const testCase of TEST_CASES) {
+        if (usefp64 && testCase.projectProps.coordinateSystem !== 'lnglat') {
+          // Apply 64 bit projection only for LNGLAT mode.
+          continue;
+        }
+
+        console.log(`${testCase.title}: ${usefp64 ? 'fp64' : 'fp32'}`);
+
+        let uniforms = {};
+        if (usefp64) {
+          // fp64arithmetic uniform
+          // TODO remove when https://github.com/visgl/luma.gl/pull/2262 landed
+          uniforms = {ONE: 1.0};
+        }
+
+        for (const c of testCase.tests) {
+          const expected = (usefp64 && c.output64) || c.output;
+          const actual = await runOnGPU({
+            vs: c.vs,
+            modules: usefp64 ? [project64, testUniforms] : [project32, testUniforms],
+            varying: 'outValue',
+            vertexCount: 1,
+            shaderInputProps: {
+              project: testCase.projectProps,
+              project64: testCase.projectProps,
+              test: {
+                uPos: c.testProps.uPos!,
+                uPos64Low: c.testProps.uPos!.map(fp64LowPart) as NumberArray3
+              }
+            },
+            uniforms
+          });
+          config.EPSILON = c.precision ?? 1e-5;
+
+          expect(
+            verifyGPUResult(actual, expected),
+            `${usefp64 ? 'project64' : 'project32'} ${c.name}`
+          ).toBe(true);
+        }
+      }
+    }
+  } finally {
+    config.EPSILON = oldEpsilon;
+  }
+  /* eslint-enable max-nested-callbacks, complexity */
+});

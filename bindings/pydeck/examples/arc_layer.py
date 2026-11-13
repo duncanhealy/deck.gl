@@ -51,9 +51,20 @@ arc_layer = pdk.Layer(
     auto_highlight=True,
 )
 
-view_state = pdk.ViewState(latitude=37.7576171, longitude=-122.5776844, bearing=45, pitch=50, zoom=8,)
+view_state = pdk.ViewState(
+    latitude=37.7576171,
+    longitude=-122.5776844,
+    bearing=45,
+    pitch=50,
+    zoom=8,
+)
 
 
 TOOLTIP_TEXT = {"html": "{S000} jobs <br /> Home of commuter in red; work location in green"}
-r = pdk.Deck(arc_layer, initial_view_state=view_state, tooltip=TOOLTIP_TEXT)
+r = pdk.Deck(
+    arc_layer,
+    initial_view_state=view_state,
+    tooltip=TOOLTIP_TEXT,
+    map_style="https://tiles.openfreemap.org/styles/dark",
+)
 r.to_html("arc_layer.html")

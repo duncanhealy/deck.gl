@@ -1,18 +1,14 @@
 {
   "scripts": {
-    "start": "webpack-dev-server --progress --hot --open",
-    "start-local": "webpack-dev-server --env.local --progress --hot --open",
-    "build": "webpack -p"
+    "start": "vite --open",
+    "start-local": "vite --config ../vite.config.local.mjs"
   },
   "dependencies": {
     "@deck.gl/core": "^8.1.0",
     "@deck.gl/layers": "^8.1.0",
-    "@loaders.gl/i3s": "^3.0.0-alpha",
-    "loaders.gl": "^0.3.5"
+    "@loaders.gl/tiles-3d": "5.0.0-beta.8"
   },
   "devDependencies": {
-    "webpack": "^4.20.2",
-    "webpack-cli": "^3.1.2",
-    "webpack-dev-server": "^3.1.1"
+    "vite": "^7.3.1"
   }
 }

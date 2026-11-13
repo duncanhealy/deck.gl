@@ -4,49 +4,102 @@ on:
   push:
     branches:
       - '*-release'
+  workflow_dispatch:
+
+concurrency: website-gh-pages
 
 jobs:
-  publish-website:
+  check_branch:
     runs-on: ubuntu-latest
-
-    if: github.repository_owner == 'visgl'
-
-    env:
-      MapboxAccessToken: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
-      GoogleMapsAPIKey: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+    outputs:
+      should_deploy: ${{ steps.deploy_config.outputs.should_deploy }}
+      target_folder: ${{ steps.deploy_config.outputs.target_folder }}
+      website_base_url: ${{ steps.deploy_config.outputs.website_base_url }}
 
     steps:
-      - uses: actions/checkout@v2.1.1
-        with:
-          token: ${{ secrets.ADMIN_TOKEN }}
-
-      - name: Use Node.js
-        uses: actions/setup-node@v1
-        with:
-          node-version: '14.x'
-
       - name: Get version
-        id: get-version
-        run: LATEST=$(npm show deck.gl version | grep -o -E "^[0-9]+\.[0-9]+") && echo "::set-output name=latest::/${LATEST}-release"
-
-      - name: Check version
-        if: ${{ !endsWith(github.ref, steps.get-version.outputs.latest) }}
+        id: get_version
         run: |
-          echo "Website is only published from the latest release branch"
+          LATEST=$(npm show deck.gl@latest version | grep -o -E "^[0-9]+\.[0-9]+")
+          echo "latest=${LATEST}-release" >> "$GITHUB_OUTPUT"
 
-      - name: Build website
-        if: ${{ endsWith(github.ref, steps.get-version.outputs.latest) }}
+      - name: Resolve deploy config
+        id: deploy_config
+        env:
+          LATEST_RELEASE_BRANCH: ${{ steps.get_version.outputs.latest }}
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "master" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "target_folder=next" >> "$GITHUB_OUTPUT"
+            echo "website_base_url=/next/" >> "$GITHUB_OUTPUT"
+          elif [ "${GITHUB_REF_NAME}" = "${LATEST_RELEASE_BRANCH}" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+            echo "target_folder=" >> "$GITHUB_OUTPUT"
+            echo "website_base_url=/" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "target_folder=" >> "$GITHUB_OUTPUT"
+            echo "website_base_url=/" >> "$GITHUB_OUTPUT"
+          fi
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: check_branch
+    
+    permissions:
+      contents: write
+
+    if: ${{ github.repository_owner == 'visgl' && needs.check_branch.outputs.should_deploy }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+
+      - name: Enable Corepack
+        run: corepack enable yarn
+
+      - name: Install dependencies
         run: |
           yarn bootstrap
-          cd website
-          yarn install-deps
-          yarn build
+          (cd website && yarn)
+
+      - name: Build website
+        env:
+          MapboxAccessToken: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          GoogleMapsAPIKey: ${{ secrets.GOOGLE_MAPS_API_KEY }}
+          GoogleMapsMapId: ${{ secrets.GOOGLE_MAPS_MAP_ID }}
+          WEBSITE_BASE_URL: ${{ needs.check_branch.outputs.website_base_url }}
+        run: (cd website && yarn build)
+
+      # Pages checks the branch root, even when the site lives under /next/.
+      - name: Prepare Pages marker
+        run: |
+          mkdir -p "website-pages-marker"
+          touch "website-pages-marker/.nojekyll"
+
+      - name: Disable Jekyll at the Pages branch root
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # 4.9.0
+        with:
+          token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+          branch: gh-pages
+          folder: website-pages-marker
+          clean: false
 
       - name: Deploy
-        if: ${{ endsWith(github.ref, steps.get-version.outputs.latest) }}
-        uses: JamesIves/github-pages-deploy-action@3.7.1
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # 4.9.0
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          BRANCH: gh-pages
-          FOLDER: website/public
-          CLEAN: true
+          token: ${{ secrets.WEBSITE_DEPLOY_TOKEN }}
+          branch: gh-pages
+          folder: website/build
+          target-folder: ${{ needs.check_branch.outputs.target_folder }}
+          clean: true
+          clean-exclude: |
+            next
+            .nojekyll

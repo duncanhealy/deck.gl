@@ -1,14 +1,23 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+/* eslint-disable no-template-curly-in-string */
 import {BitmapLayer} from '@deck.gl/layers';
 
 import {
+  A5Layer,
   GreatCircleLayer,
   S2Layer,
   TileLayer,
   TripsLayer,
   TerrainLayer,
   MVTLayer,
+  _WMSLayer as WMSLayer,
   H3HexagonLayer,
-  H3ClusterLayer
+  H3ClusterLayer,
+  QuadkeyLayer,
+  GeohashLayer
 } from '@deck.gl/geo-layers';
 
 import {makeLayerDemo} from './demo-base';
@@ -23,8 +32,40 @@ export const GreatCircleLayerDemo = makeLayerDemo({
     getTargetPosition: d => d.to.coordinates,
     getSourceColor: [64, 255, 0],
     getTargetColor: [0, 128, 200],
-    widthMinPixels: 5,
+    getWidth: 5,
     pickable: true
+  }`
+});
+
+export const GeohashLayerDemo = makeLayerDemo({
+  Layer: GeohashLayer,
+  getTooltip: '({object}) => object && `${object.geohash} value: ${object.value}`',
+  props: `{
+    data: '${DATA_URI}/sf.geohashes.json',
+    pickable: true,
+    wireframe: false,
+    filled: true,
+    extruded: true,
+    elevationScale: 1000,
+    getGeohash: d => d.geohash,
+    getFillColor: d => [d.value * 255, (1 - d.value) * 128, (1 - d.value) * 255],
+    getElevation: d => d.value
+  }`
+});
+
+export const QuadkeyLayerDemo = makeLayerDemo({
+  Layer: QuadkeyLayer,
+  getTooltip: '({object}) => object && `${object.quadkey} value: ${object.value}`',
+  props: `{
+    data: '${DATA_URI}/sf.quadkeys.json',
+    pickable: true,
+    wireframe: false,
+    filled: true,
+    extruded: true,
+    elevationScale: 1000,
+    getQuadkey: d => d.quadkey,
+    getFillColor: d => [d.value * 128, (1 - d.value) * 255, (1 - d.value) * 255, 180],
+    getElevation: d => d.value
   }`
 });
 
@@ -44,9 +85,28 @@ export const S2LayerDemo = makeLayerDemo({
   }`
 });
 
+export const A5LayerDemo = makeLayerDemo({
+  Layer: A5Layer,
+  getTooltip: '({object}) => object && `${object.pentagon} count: ${object.count}`',
+  props: `{
+    data: '${DATA_URI}/sf.bike.parking.a5v1.json',
+    pickable: true,
+    wireframe: false,
+    filled: true,
+    extruded: true,
+    elevationScale: 10,
+    getPentagon: f => f.pentagon,
+    getFillColor: f => {
+      const value = f.count / 211;
+      return [(1 - value) * 235, 255 - 85 * value, 255 - 170 * value];
+    },
+    getElevation: f => f.count
+  }`
+});
+
 export const H3HexagonLayerDemo = makeLayerDemo({
   Layer: H3HexagonLayer,
-  dependencies: ['https://unpkg.com/h3-js'],
+  dependencies: ['https://unpkg.com/h3-js@4.1.0'],
   getTooltip: '({object}) => object && `${object.hex} count: ${object.count}`',
   props: `{
     data: '${DATA_URI}/sf.h3cells.json',
@@ -63,7 +123,7 @@ export const H3HexagonLayerDemo = makeLayerDemo({
 
 export const H3ClusterLayerDemo = makeLayerDemo({
   Layer: H3ClusterLayer,
-  dependencies: ['https://unpkg.com/h3-js'],
+  dependencies: ['https://unpkg.com/h3-js@4.1.0'],
   getTooltip: '({object}) => object && `density: ${object.mean}`',
   props: `{
     data: '${DATA_URI}/sf.h3clusters.json',
@@ -80,7 +140,7 @@ export const H3ClusterLayerDemo = makeLayerDemo({
 
 export const TileLayerDemo = makeLayerDemo({
   Layer: TileLayer,
-  getTooltip: '({tile}) => tile && `x:${tile.x}, y:${tile.y}, z:${tile.z}`',
+  getTooltip: '({tile}) => tile && `x:${tile.index.x}, y:${tile.index.y}, z:${tile.index.z}`',
   imports: {BitmapLayer},
   mapStyle: null,
   props: `{
@@ -90,14 +150,12 @@ export const TileLayerDemo = makeLayerDemo({
     maxZoom: 19,
 
     renderSubLayers: props => {
-      const {
-        bbox: {west, south, east, north}
-      } = props.tile;
+      const {boundingBox} = props.tile;
 
       return new BitmapLayer(props, {
         data: null,
         image: props.data,
-        bounds: [west, south, east, north]
+        bounds: [boundingBox[0][0], boundingBox[0][1], boundingBox[1][0], boundingBox[1][1]]
       });
     }
   }`
@@ -139,16 +197,29 @@ export const TerrainLayerDemo = makeLayerDemo({
 export const MVTLayerDemo = makeLayerDemo({
   Layer: MVTLayer,
   mapStyle: null,
+  attribution: true,
+  getTooltip: '({object}) => object && (object.properties.name || object.properties.layerName)',
   props: `{
-    data: [
-      'https://tiles-a.basemaps.cartocdn.com/vectortiles/carto.streets/v1/{z}/{x}/{y}.mvt'
-    ],
+    data: 'https://tiles.openfreemap.org/planet',
 
     minZoom: 0,
-    maxZoom: 23,
+    maxZoom: 14,
+    stroked: false,
     getLineColor: [192, 192, 192],
-    getFillColor: [140, 170, 180],
-
+    getFillColor: f => {
+      switch (f.properties.layerName) {
+        case 'poi':
+          return [255, 0, 0];
+        case 'water':
+          return [120, 150, 180];
+        case 'building':
+          return [218, 218, 218];
+        default:
+          return [240, 240, 240];
+      }
+    },
+    getPointRadius: 2,
+    pointRadiusUnits: 'pixels',
     getLineWidth: f => {
       switch (f.properties.class) {
         case 'street':
@@ -159,6 +230,25 @@ export const MVTLayerDemo = makeLayerDemo({
           return 1;
       }
     },
-    lineWidthMinPixels: 1
+    lineWidthMinPixels: 1,
+    pickable: true
   }`
-})
+});
+
+export const WMSLayerDemo = makeLayerDemo({
+  Layer: WMSLayer,
+  isExperimental: true,
+  mapStyle: null,
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 9,
+    minZoom: 1,
+    maxZoom: 20
+  },
+  props: `{
+    data: 'https://ows.terrestris.de/osm/service',
+    serviceType: 'wms',
+    layers: ['OSM-WMS']
+  }`
+});

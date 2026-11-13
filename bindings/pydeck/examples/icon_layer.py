@@ -8,7 +8,6 @@ Location of biergartens in Germany listed on OpenStreetMap as of early 2020.
 import pydeck as pdk
 import pandas as pd
 
-
 # Data from OpenStreetMap, accessed via osmpy
 DATA_URL = "https://raw.githubusercontent.com/ajduberstein/geo_datasets/master/biergartens.json"
 ICON_URL = "https://upload.wikimedia.org/wikipedia/commons/c/c4/Projet_bi%C3%A8re_logo_v2.png"
@@ -39,5 +38,10 @@ icon_layer = pdk.Layer(
     pickable=True,
 )
 
-r = pdk.Deck(layers=[icon_layer], initial_view_state=view_state, tooltip={"text": "{tags}"})
+r = pdk.Deck(
+    layers=[icon_layer],
+    initial_view_state=view_state,
+    tooltip={"text": "{tags}"},
+    map_style="https://tiles.openfreemap.org/styles/dark",
+)
 r.to_html("icon_layer.html")

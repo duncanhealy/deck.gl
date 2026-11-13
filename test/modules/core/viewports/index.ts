@@ -1,0 +1,10 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import './viewport.spec';
+import './globe-viewport.spec';
+import './orbit-viewport.spec';
+import './web-mercator-project-unproject.spec';
+import './web-mercator-viewport.spec';
+import './conformance.spec';

@@ -2,7 +2,8 @@
   "name": "@deck.gl/test-utils",
   "description": "Test utilities for deck.gl layers",
   "license": "MIT",
-  "version": "8.5.0-alpha.4",
+  "type": "module",
+  "version": "10.0.0-alpha.1",
   "publishConfig": {
     "access": "public"
   },
@@ -16,17 +17,43 @@
     "type": "git",
     "url": "https://github.com/visgl/deck.gl.git"
   },
-  "main": "dist/es5/index.js",
-  "module": "dist/esm/index.js",
+  "bugs": {
+    "url": "https://github.com/visgl/deck.gl/issues"
+  },
+  "homepage": "https://deck.gl",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./vitest": {
+      "types": "./dist/vitest.d.ts",
+      "import": "./dist/vitest.js",
+      "require": "./dist/vitest.cjs"
+    }
+  },
   "files": [
     "dist",
     "src"
   ],
-  "peerDependencies": {
-    "@deck.gl/core": "^8.0.0",
-    "@luma.gl/test-utils": "^8.0.0",
-    "@luma.gl/webgl": "^8.0.0",
-    "@probe.gl/test-utils": "^3.2.1"
+  "dependencies": {
+    "@luma.gl/core": "10.0.0-alpha.14"
   },
-  "scripts": {}
+  "peerDependencies": {
+    "@deck.gl/core": "~10.0.0-alpha",
+    "@luma.gl/core": "10.0.0-alpha.14",
+    "@luma.gl/engine": "10.0.0-alpha.14",
+    "@probe.gl/test-utils": "^4.1.1",
+    "vitest": "^4.0.18"
+  },
+  "peerDependenciesMeta": {
+    "vitest": {
+      "optional": true
+    }
+  },
+  "gitHead": "13ace64fc2cee08c133afc882fc307253489a4e4"
 }

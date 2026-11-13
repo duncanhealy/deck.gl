@@ -1,0 +1,360 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect} from 'vitest';
+import {equals, config, Vector3} from '@math.gl/core';
+import {WebMercatorViewport} from 'deck.gl';
+import {Matrix4} from '@math.gl/core';
+import {getDistanceScales} from '@math.gl/web-mercator';
+
+// Adjust sensitivity of math.gl's equals
+const LNGLAT_TOLERANCE = 1e-6;
+const ALT_TOLERANCE = 1e-5;
+const OFFSET_TOLERANCE = 1e-5;
+
+const DEGREES_TO_RADIANS = Math.PI / 180;
+
+/* eslint-disable */
+const TEST_VIEWPORTS = [
+  {
+    width: 800,
+    height: 600,
+    latitude: 38,
+    longitude: -122,
+    zoom: 11
+  },
+  {
+    width: 800,
+    height: 600,
+    latitude: 23,
+    longitude: 20,
+    zoom: 15,
+    pich: 30,
+    bearing: -85
+  },
+  {
+    width: 800,
+    height: 600,
+    latitude: 65,
+    longitude: 42,
+    zoom: 16,
+    pitch: 15,
+    bearing: 30
+  }
+];
+
+test('WebMercatorViewport#imports', () => {
+  expect(WebMercatorViewport, 'WebMercatorViewport import ok').toBeTruthy();
+});
+
+test('WebMercatorViewport#constructor', () => {
+  expect(
+    new WebMercatorViewport() instanceof WebMercatorViewport,
+    'Created new WebMercatorViewport with default args'
+  ).toBeTruthy();
+
+  expect(
+    new WebMercatorViewport(
+      Object.assign({}, TEST_VIEWPORTS[0], {
+        width: 0,
+        height: 0
+      })
+    ) instanceof WebMercatorViewport,
+    'WebMercatorViewport constructed successfully with 0 width and height'
+  ).toBeTruthy();
+});
+
+test('WebMercatorViewport#padding', () => {
+  const viewport = new WebMercatorViewport({...TEST_VIEWPORTS[0], padding: {left: 100, top: 20}});
+  const center = viewport.project([viewport.longitude, viewport.latitude]);
+  expect(
+    equals(center, [viewport.width / 2 + 50, viewport.height / 2 + 10]),
+    'viewport center is offset'
+  ).toBeTruthy();
+});
+
+test('WebMercatorViewport.projectFlat', () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = LNGLAT_TOLERANCE;
+
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new WebMercatorViewport(vc);
+    for (const tc of TEST_VIEWPORTS) {
+      const lnglatIn = [tc.longitude, tc.latitude];
+      const xy = viewport.projectFlat(lnglatIn);
+      const lnglat = viewport.unprojectFlat(xy);
+      console.log(`Comparing [${lnglatIn}] to [${lnglat}]`);
+      expect(equals(lnglatIn, lnglat)).toBeTruthy();
+    }
+  }
+  config.EPSILON = oldEpsilon;
+});
+
+test('WebMercatorViewport.project#3D', () => {
+  const oldEpsilon = config.EPSILON;
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new WebMercatorViewport(vc);
+    for (const offset of [0, 0.5, 1.0, 5.0]) {
+      const lnglatIn3 = [vc.longitude + offset, vc.latitude + offset, 0];
+      const xyz3 = viewport.project(lnglatIn3);
+      const lnglat3 = viewport.unproject(xyz3);
+      console.log(`Project/unproject ${lnglatIn3} => ${xyz3} => ${lnglat3}`);
+      config.EPSILON = LNGLAT_TOLERANCE;
+      expect(
+        equals(lnglatIn3.slice(0, 2), lnglat3.slice(0, 2)),
+        'LngLat input/output match'
+      ).toBeTruthy();
+      config.EPSILON = ALT_TOLERANCE;
+      expect(equals(lnglatIn3[2], lnglat3[2]), 'Altitude input/output match').toBeTruthy();
+    }
+  }
+  config.EPSILON = oldEpsilon;
+});
+
+test('WebMercatorViewport.project#2D', () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = LNGLAT_TOLERANCE;
+  // Cross check positions
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new WebMercatorViewport(vc);
+    for (const tc of TEST_VIEWPORTS) {
+      const lnglatIn = [tc.longitude, tc.latitude];
+      const xy = viewport.project(lnglatIn);
+      const lnglat = viewport.unproject(xy);
+      console.log(`Comparing [${lnglatIn}] to [${lnglat}]`);
+      expect(equals(lnglatIn, lnglat)).toBeTruthy();
+    }
+  }
+  config.EPSILON = oldEpsilon;
+});
+
+test('WebMercatorViewport.getScales', () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = OFFSET_TOLERANCE;
+
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new WebMercatorViewport(vc);
+    const distanceScales = viewport.getDistanceScales();
+    const expected = getDistanceScales({longitude: vc.longitude, latitude: vc.latitude});
+    expect(distanceScales.unitsPerMeter).toEqual(expected.unitsPerMeter);
+    expect(distanceScales.unitsPerWorldUnit).toEqual(expected.unitsPerDegree);
+    expect(distanceScales.unitsPerMeter2).toEqual([0, 0, 0]);
+    expect(distanceScales.unitsPerWorldUnit2).toEqual([0, 0, 0]);
+    const origin = [vc.longitude, vc.latitude, 0];
+    const highPrecision = getDistanceScales({...vc, highPrecision: true});
+    const scalesAtOrigin = viewport.getDistanceScales(origin);
+    expect(scalesAtOrigin.unitsPerMeter2).toEqual(highPrecision.unitsPerMeter2);
+    expect(scalesAtOrigin.unitsPerWorldUnit2).toEqual(highPrecision.unitsPerDegree2);
+
+    for (const offset of [-0.01, 0.005, 0.01]) {
+      const xyz0 = [
+        viewport.center[0] + distanceScales.unitsPerWorldUnit[0] * offset,
+        viewport.center[1] + distanceScales.unitsPerWorldUnit[1] * offset
+      ];
+      const xyz1 = viewport.projectFlat([vc.longitude + offset, vc.latitude + offset, 0]);
+
+      expect(equals(xyz0, xyz1), 'unitsPerWorldUnit matches projection').toBeTruthy();
+    }
+  }
+  config.EPSILON = oldEpsilon;
+});
+
+test('WebMercatorViewport.getFrustumPlanes', () => {
+  const CULLING_TEST_CASES = [
+    {
+      pixels: [400, 300],
+      result: null
+    },
+    {
+      pixels: [799, 1],
+      result: null
+    },
+    {
+      pixels: [1, 599],
+      result: null
+    },
+    {
+      pixels: [799, 599],
+      result: null
+    },
+    {
+      pixels: [1, 1],
+      result: null
+    },
+    {
+      pixels: [-1, 300],
+      result: 'left'
+    },
+    {
+      pixels: [801, 300],
+      result: 'right'
+    },
+    {
+      pixels: [400, -1],
+      result: 'top'
+    },
+    {
+      pixels: [400, 601],
+      result: 'bottom'
+    },
+    {
+      pixels: [400, 300, -1.01],
+      result: 'near'
+    },
+    {
+      pixels: [400, 300, 1.01],
+      result: 'far'
+    }
+  ];
+
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new WebMercatorViewport(vc);
+    const planes = viewport.getFrustumPlanes();
+
+    for (const tc of CULLING_TEST_CASES) {
+      const lngLat = viewport.unproject(tc.pixels);
+      const commonPosition = viewport.projectPosition(lngLat);
+      expect(getCulling(commonPosition, planes), 'point culled').toBe(tc.result);
+    }
+  }
+});
+
+test('WebMercatorViewport.subViewports', () => {
+  let viewport = new WebMercatorViewport(TEST_VIEWPORTS[0]);
+  expect(viewport.subViewports, 'gets correct subViewports').toEqual(null);
+
+  viewport = new WebMercatorViewport({...TEST_VIEWPORTS[0], repeat: true});
+  expect(viewport.subViewports, 'gets correct subViewports').toEqual([viewport]);
+
+  viewport = new WebMercatorViewport({
+    width: 800,
+    height: 400,
+    longitude: 0,
+    latitude: 0,
+    zoom: 0,
+    repeat: true
+  });
+  const {subViewports} = viewport;
+  expect(subViewports.length, 'gets correct subViewports').toBe(3);
+  expect(subViewports[0].project([0, 0]), 'center offset in subViewports[0]').toEqual([
+    400 - 512,
+    200
+  ]);
+  expect(subViewports[1].project([0, 0]), 'center offset in subViewports[1]').toEqual([400, 200]);
+  expect(subViewports[2].project([0, 0]), 'center offset in subViewports[2]').toEqual([
+    400 + 512,
+    200
+  ]);
+
+  expect(viewport.subViewports, 'subViewports are cached').toBe(subViewports);
+});
+
+test('WebMercatorViewport#constructor#fovy', () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = 0.01;
+
+  const fovy = 25;
+  const projectionMatrix = new Matrix4().perspective({
+    fovy: fovy * DEGREES_TO_RADIANS,
+    aspect: 4 / 3,
+    near: 0.1,
+    far: 10
+  });
+
+  let viewport = new WebMercatorViewport({...TEST_VIEWPORTS[0], projectionMatrix});
+  expect(viewport.fovy, 'fovy is calculated from projectionMatrix').toBe(fovy);
+  expect(
+    equals(viewport.altitude, 2.255),
+    'altitude is calculated from projectionMatrix'
+  ).toBeTruthy();
+
+  viewport = new WebMercatorViewport({...TEST_VIEWPORTS[0], fovy});
+  expect(viewport.fovy, 'fovy is passed through').toBe(fovy);
+  expect(equals(viewport.altitude, 2.255), 'altitude is calculated from fovy').toBeTruthy();
+
+  viewport = new WebMercatorViewport({...TEST_VIEWPORTS[0], altitude: 2});
+  expect(viewport.altitude, 'altitude is passed through').toBe(2);
+  expect(equals(viewport.fovy, 28.072), 'fovy is calculated from altitude').toBeTruthy();
+
+  viewport = new WebMercatorViewport(TEST_VIEWPORTS[0]);
+  expect(viewport.altitude, 'using default altitude').toBe(1.5);
+  expect(equals(viewport.fovy, 36.87), 'fovy is calculated from altitude').toBeTruthy();
+
+  config.EPSILON = oldEpsilon;
+});
+
+function getCulling(p, planes) {
+  let outDir = null;
+  p = new Vector3(p);
+  for (const dir in planes) {
+    const plane = planes[dir];
+    if (p.dot(plane.normal) > plane.distance) {
+      outDir = dir;
+      break;
+    }
+  }
+  return outDir;
+}
+
+test('WebMercatorViewport describes OSMTile512 without changing common-space projection', () => {
+  for (const latitude of [0, 40, 60]) {
+    const viewport = new WebMercatorViewport({longitude: 12, latitude});
+    const crs = viewport.crs!;
+    expect(crs.signature).toBe('OSMTile512');
+    expect(crs.axis).toBe('esu');
+    expect(crs.renderingBounds).toEqual([
+      [0, 0, 0],
+      [512, 512, 0]
+    ]);
+    const source = [12, latitude, 100, 7];
+    const tile = crs.converter.WGS84.from(source);
+    const common = viewport.projectPosition(source);
+    expect(tile[0]).toBeCloseTo(common[0], 10);
+    expect(tile[1]).toBeCloseTo(512 - common[1], 10);
+    expect(tile.slice(2)).toEqual([100, 7]);
+    expect(common[2]).toBe(100 * getDistanceScales({longitude: 12, latitude}).unitsPerMeter[2]);
+    const restored = crs.converter.WGS84.to(tile);
+    expect(restored[0]).toBeCloseTo(12, 10);
+    expect(restored[1]).toBeCloseTo(latitude, 10);
+    expect(restored.slice(2)).toEqual(source.slice(2));
+    const output = new Float64Array(4);
+    expect(crs.converter.WGS84.from(source, output)).toBe(output);
+    expect(Array.from(output)).toEqual(tile);
+    expect(crs.converter.WGS84.to(output, output)).toBe(output);
+    expect(output[2]).toBe(100);
+    expect(source).toEqual([12, latitude, 100, 7]);
+    const scale = crs.getRenderingScale(tile)!;
+    expect(scale[0]).toBeCloseTo(viewport.distanceScales.metersPerUnit[0], 6);
+    expect(scale[1]).toBeCloseTo(viewport.distanceScales.metersPerUnit[1], 6);
+    expect(scale[2]).toBe(1);
+  }
+});
+
+test('OSMTile512 normalization is explicit and preserves altitude', () => {
+  const crs = new WebMercatorViewport().crs!;
+  const normalized = crs.converter.WGS84.normalize([372, 90, 123]);
+  expect(normalized[0]).toBe(12);
+  expect(normalized[1]).toBeCloseTo(85.051129, 6);
+  expect(normalized[2]).toBe(123);
+  // Conversion retains continuous longitude for repeated worlds; only normalization wraps it.
+  expect(crs.converter.WGS84.from([372, 0])[0]).toBeGreaterThan(512);
+  expect(crs.converter.WGS84.from([0, 60])[1]).toBeLessThan(256);
+});
+
+test.each([
+  {longitude: NaN, latitude: NaN},
+  {longitude: 0, latitude: NaN},
+  {longitude: NaN, latitude: 0}
+])('WebMercatorViewport preserves local fallback for non-finite anchors: %j', options => {
+  const viewport = new WebMercatorViewport(options);
+  expect(viewport.isGeospatial).toBe(false);
+  expect(viewport.crs).toBeUndefined();
+  expect(viewport.projectFlat([4, 5])).toEqual([4, 5]);
+  expect(viewport.unprojectFlat([4, 5])).toEqual([4, 5]);
+  expect(viewport.getDistanceScales([4, 5])).toBe(viewport.distanceScales);
+  const position = [4, 5, 6];
+  viewport
+    .unprojectPosition(viewport.projectPosition(position))
+    .forEach((value, axis) => expect(value).toBeCloseTo(position[axis], 10));
+});

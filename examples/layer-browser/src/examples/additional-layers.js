@@ -1,16 +1,23 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import {
   GreatCircleLayer,
+  QuadkeyLayer,
   S2Layer,
+  A5Layer,
   H3ClusterLayer,
   H3HexagonLayer,
-  TripsLayer
+  TripsLayer,
+  GeohashLayer
   // KMLLayer
 } from '@deck.gl/geo-layers';
 
-import * as h3 from 'h3-js';
+import {gridDisk} from 'h3-js';
 
 import {registerLoaders} from '@loaders.gl/core';
-import {PLYLoader} from '@loaders.gl/ply';
+import {PLYLoader} from '@loaders.gl/pointclouds/ply';
 
 import * as dataSamples from '../data-samples';
 
@@ -30,6 +37,30 @@ const GreatCircleLayerExample = {
   }
 };
 
+const GeohashLayerExample = {
+  layer: GeohashLayer,
+  props: {
+    data: dataSamples.geohashes,
+    opacity: 0.6,
+    getGeohash: f => f.geohash,
+    getFillColor: f => [f.value * 255, (1 - f.value) * 128, 0],
+    getElevation: f => 100 * f.value,
+    pickable: true
+  }
+};
+
+const QuadkeyLayerExample = {
+  layer: QuadkeyLayer,
+  props: {
+    data: dataSamples.quadkeys,
+    opacity: 0.6,
+    getQuadkey: f => f.quadkey,
+    getFillColor: f => [f.value * 128, (1 - f.value) * 255, (1 - f.value) * 255, 180],
+    getElevation: f => 100 * f.value,
+    pickable: true
+  }
+};
+
 const S2LayerExample = {
   layer: S2Layer,
   props: {
@@ -43,11 +74,27 @@ const S2LayerExample = {
   }
 };
 
+const A5LayerExample = {
+  layer: A5Layer,
+  props: {
+    data: dataSamples.pentagons,
+    opacity: 0.6,
+    getPentagon: f => f.pentagon,
+    getFillColor: f => {
+      const value = f.count / 211;
+      return [(1 - value) * 235, 255 - 85 * value, 255 - 170 * value];
+    },
+    getElevation: f => f.count,
+    elevationScale: 10,
+    pickable: true
+  }
+};
+
 const H3ClusterLayerExample = {
   layer: H3ClusterLayer,
   props: {
     data: ['882830829bfffff'],
-    getHexagons: d => h3.kRing(d, 6),
+    getHexagons: d => gridDisk(d, 6),
     getLineWidth: 100,
     stroked: true,
     filled: false
@@ -57,9 +104,9 @@ const H3ClusterLayerExample = {
 const H3HexagonLayerExample = {
   layer: H3HexagonLayer,
   props: {
-    // data: h3.kRing('891c0000003ffff', 4), // Pentagon sample, [-143.478, 50.103]
-    // data: h3.compact(h3.kRing('882830829bfffff', 8)), // Multi-resolution
-    data: h3.kRing('882830829bfffff', 4), // SF
+    // data: gridDisk('891c0000003ffff', 4), // Pentagon sample, [-143.478, 50.103]
+    // data: compactCells(gridDisk('882830829bfffff', 8)), // Multi-resolution
+    data: gridDisk('882830829bfffff', 4), // SF
     getHexagon: d => d,
     getFillColor: (d, {index}) => [255, index * 5, 0],
     getElevation: d => Math.random() * 1000
@@ -100,9 +147,12 @@ const TripsLayerExample = {
 export default {
   'Geo Layers': {
     S2Layer: S2LayerExample,
+    QuadkeyLayer: QuadkeyLayerExample,
+    A5Layer: A5LayerExample,
     H3ClusterLayer: H3ClusterLayerExample,
     H3HexagonLayer: H3HexagonLayerExample,
     GreatCircleLayer: GreatCircleLayerExample,
-    TripsLayer: TripsLayerExample
+    TripsLayer: TripsLayerExample,
+    GeohashLayer: GeohashLayerExample
   }
 };

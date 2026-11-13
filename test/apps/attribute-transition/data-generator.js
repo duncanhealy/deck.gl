@@ -1,4 +1,8 @@
-import {lerp} from 'math.gl';
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {lerp} from '@math.gl/core';
 
 function random(min, max) {
   if (Array.isArray(min)) {

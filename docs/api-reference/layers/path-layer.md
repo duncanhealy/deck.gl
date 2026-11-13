@@ -1,43 +1,137 @@
-import {PathLayerDemo} from 'website-components/doc-demos/layers';
+---
+description: "PathLayer renders polylines with configurable width, joints and caps."
+---
+
+# PathLayer
+![webgpu](https://img.shields.io/badge/webgpu-supported-blue.svg?style=flat-square)
+
+import {PathLayerDemo} from '@site/src/doc-demos/layers';
 
 <PathLayerDemo />
 
-# PathLayer
+The `PathLayer` renders lists of coordinate points as extruded polylines with mitering.
 
-The Path Layer takes in lists of coordinate points and renders them as extruded lines with mitering.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="language">
+  <TabItem value="js" label="JavaScript">
 
 ```js
-import DeckGL from '@deck.gl/react';
+import {Deck} from '@deck.gl/core';
 import {PathLayer} from '@deck.gl/layers';
 
-function App({data, viewState}) {
-  /**
-   * Data format:
-   * [
-   *   {
-   *     path: [[-122.4, 37.7], [-122.5, 37.8], [-122.6, 37.85]],
-   *     name: 'Richmond - Millbrae',
-   *     color: [255, 0, 0]
-   *   },
-   *   ...
-   * ]
-   */
-  const layer = new PathLayer({
-    id: 'path-layer',
-    data,
-    pickable: true,
-    widthScale: 20,
-    widthMinPixels: 2,
-    getPath: d => d.path,
-    getColor: d => colorToRGBArray(d.color),
-    getWidth: d => 5
+const layer = new PathLayer({
+  id: 'PathLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-lines.json',
+
+  getColor: d => {
+    const hex = d.color;
+    // convert to RGB
+    return hex.match(/[0-9a-f]{2}/g).map(x => parseInt(x, 16));
+  },
+  getPath: d => d.path,
+  getWidth: 100,
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck, PickingInfo} from '@deck.gl/core';
+import {PathLayer} from '@deck.gl/layers';
+
+type BartLine = {
+  name: string;
+  color: string;
+  path: [longitude: number, latitude: number][];
+};
+
+const layer = new PathLayer<BartLine>({
+  id: 'PathLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-lines.json',
+
+  getColor: (d: BartLine) => {
+    const hex = d.color;
+    // convert to RGB
+    return hex.match(/[0-9a-f]{2}/g).map(x => parseInt(x, 16));
+  },
+  getPath: (d: BartLine) => d.path,
+  getWidth: 100,
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}: PickingInfo<BartLine>) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {PathLayer} from '@deck.gl/layers';
+import type {PickingInfo} from '@deck.gl/core';
+
+type BartLine = {
+  name: string;
+  color: string;
+  path: [longitude: number, latitude: number][];
+};
+
+function App() {
+  const layer = new PathLayer<BartLine>({
+    id: 'PathLayer',
+    data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-lines.json',
+
+    getColor: (d: BartLine) => {
+      const hex = d.color;
+      // convert to RGB
+      return hex.match(/[0-9a-f]{2}/g).map(x => parseInt(x, 16));
+    },
+    getPath: (d: BartLine) => d.path,
+    getWidth: 100,
+    pickable: true
   });
 
-  return <DeckGL viewState={viewState}
+  return <DeckGL
+    initialViewState={{
+      longitude: -122.4,
+      latitude: 37.74,
+      zoom: 11
+    }}
+    controller
+    getTooltip={({object}: PickingInfo<BartLine>) => object && object.name}
     layers={[layer]}
-    getTooltip={({object}) => object && object.name} />;
+  />;
 }
 ```
+
+  </TabItem>
+</Tabs>
+
 
 ## Installation
 
@@ -49,18 +143,20 @@ npm install deck.gl
 npm install @deck.gl/core @deck.gl/layers
 ```
 
-```js
+```ts
 import {PathLayer} from '@deck.gl/layers';
-new PathLayer({});
+import type {PathLayerProps} from '@deck.gl/layers';
+
+new PathLayer<DataT>(...props: PathLayerProps<DataT>[]);
 ```
 
 To use pre-bundled scripts:
 
 ```html
-<script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^8.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/layers@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@^9.0.0/dist.min.js"></script>
 ```
 
 ```js
@@ -69,63 +165,71 @@ new deck.PathLayer({});
 
 ## Properties
 
-Inherits from all [Base Layer](/docs/api-reference/core/layer.md) properties.
+Inherits from all [Base Layer](../core/layer.md) properties.
 
 ### Render Options
 
-##### `widthUnits` (String, optional)
+#### `widthUnits` (string, optional) {#widthunits}
 
 * Default: `'meters'`
 
-The units of the line width, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+The units of the line width, one of `'meters'`, `'common'`, and `'pixels'`. See [unit system](../../developer-guide/coordinate-systems.md#supported-units).
 
-##### `widthScale` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `widthScale` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#widthscale}
 
 * Default: `1`
 
 The path width multiplier that multiplied to all paths.
 
-##### `widthMinPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `widthMinPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#widthminpixels}
 
 * Default: `0`
 
 The minimum path width in pixels. This prop can be used to prevent the path from getting too thin when zoomed out.
 
-##### `widthMaxPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `widthMaxPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#widthmaxpixels}
 
 * Default: Number.MAX_SAFE_INTEGER
 
 The maximum path width in pixels. This prop can be used to prevent the path from getting too thick when zoomed in.
 
 
-##### `capRounded` (Boolean, optional)
+#### `capRounded` (boolean, optional) {#caprounded}
 
 * Default: `false`
 
 Type of caps. If `true`, draw round caps. Otherwise draw square caps.
 
 
-##### `jointRounded` (Boolean, optional)
+#### `jointRounded` (boolean, optional) {#jointrounded}
 
 * Default: `false`
 
 Type of joint. If `true`, draw round joints. Otherwise draw miter joints.
 
-##### `billboard` (Boolean, optional)
+#### `billboard` (boolean, optional) {#billboard}
 
 * Default: `false`
 
 If `true`, extrude the path in screen space (width always faces the camera).
 If `false`, the width always faces up.
 
-##### `miterLimit` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `miterLimit` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#miterlimit}
 
 * Default: `4`
 
 The maximum extent of a joint in ratio to the stroke width.
 Only works if `jointRounded` is `false`.
 
-##### `_pathType` (Object, optional)
+#### `antialiasing` (boolean, optional) {#antialiasing}
+
+* Default: `false`
+
+When enabled, this prop computes edge coverage in the shader. When disabled, the layer relies on render-target multisampling. Shader-computed coverage can cause artifacts where a path overlaps itself. Only the edges along the width of the path are smoothed — flat caps at the two ends of a path are not; set `capRounded` to `true` if those need smoothing.
+
+Other antialiasing techniques have different trade-offs; see [Antialiasing and Multisampling](https://luma.gl/docs/api-guide/gpu/gpu-antialiasing) in the luma.gl docs.
+
+#### `_pathType` (object, optional) {#_pathtype}
 
 * Default: `null`
 
@@ -139,7 +243,15 @@ When normalization is disabled, paths must be specified in the format of flat ar
 
 ### Data Accessors
 
-##### `getPath` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `_projectionTolerance` (number, optional) {#_projectiontolerance}
+
+* Default: `0`
+
+> Note: This prop is experimental
+
+Maximum sampled edge error in meters with a preprojecting viewport. Zero disables refinement. Requires `_pathType: null`, CPU-readable paths and per-object width and color. See [Adaptive refinement](../core/custom-projection-view.md#adaptive-refinement).
+
+#### `getPath` ([Accessor&lt;PathGeometry&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getpath}
 
 * Default: `object => object.path`
 
@@ -150,15 +262,14 @@ A path can be one of the following formats:
 * An array of points (`[x, y, z]`). Compatible with the GeoJSON [LineString](https://tools.ietf.org/html/rfc7946#section-3.1.4) specification.
 * A flat array or [TypedArray](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray) of numbers, in the shape of `[x0, y0, z0, x1, y1, z1, ...]`. By default, each coordinate is assumed to contain 3 consecutive numbers. If each coordinate contains only two numbers (x, y), set the `positionFormat` prop of the layer to `XY`:
 
-```js
-new PathLayer({
-  ...
-  getPath: object => object.vertices, // [x0, y0, x1, y1, x2, y2, ...]
-  positionFormat: `XY`
+```ts
+new PathLayer<{vertices: Float32Array}>({
+  getPath: d => d.vertices, // [x0, y0, x1, y1, x2, y2, ...]
+  positionFormat: 'XY'
 })
 ```
 
-##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getcolor}
 
 * Default `[0, 0, 0, 255]`
 
@@ -167,7 +278,7 @@ The rgba color of each object, in `r, g, b, [a]`. Each component is in the 0-255
 * If an array is provided, it is used as the color for all objects.
 * If a function is provided, it is called on each object to retrieve its color.
 
-##### `getWidth` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getWidth` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getwidth}
 
 * Default: `1`
 
@@ -179,7 +290,7 @@ The width of each path, in units specified by `widthUnits` (default meters).
 
 ## Use binary attributes
 
-This section is about the special requirements when [supplying attributes directly](/docs/developer-guide/performance.md#supply-attributes-directly) to a `PathLayer`.
+This section is about the special requirements when [supplying attributes directly](../../developer-guide/performance.md#supply-attributes-directly) to a `PathLayer`.
 
 Because each path has a different number of vertices, when `data.attributes.getPath` is supplied, the layer also requires an array `data.startIndices` that describes the vertex index at the start of each path. For example, if there are 3 paths of 2, 3, and 4 vertices each, `startIndices` should be `[0, 2, 5, 9]`.
 
@@ -189,15 +300,14 @@ To truly realize the performance gain from using binary data, the app likely wan
 
 Example use case:
 
-```js
-// USE PLAIN JSON OBJECTS
+```ts title="Use plain JSON array"
 const PATH_DATA = [
   {
     path: [[-122.4, 37.7], [-122.5, 37.8], [-122.6, 37.85]],
     name: 'Richmond - Millbrae',
     color: [255, 0, 0]
   },
-  ...
+  // ...
 ];
 
 new PathLayer({
@@ -207,11 +317,10 @@ new PathLayer({
 })
 ```
 
-Convert to using binary attributes:
+The equivalent binary attributes would be:
 
-```js
-// USE BINARY
-// Flatten the path vertices
+```ts title="Use binary attributes"
+// Flatten PATH_DATA into several binary buffers. This is typically done on the server or in a worker
 // [-122.4, 37.7, -122.5, 37.8, -122.6, 37.85, ...]
 const positions = new Float64Array(PATH_DATA.map(d => d.path).flat(2));
 // The color attribute must supply one color for each vertex
@@ -235,6 +344,19 @@ new PathLayer({
   },
   _pathType: 'open' // this instructs the layer to skip normalization and use the binary as-is
 })
+```
+
+## Remarks
+
+### Using with GlobeView
+
+When using this layer with [GlobeView](../core/globe-view.md) or MapLibre's globe projection, paths may be invisible when viewed from certain angles because `GlobeView` enables back-face culling by default. To ensure paths are visible from both sides, set:
+
+```js
+new PathLayer({
+  // ...other props
+  parameters: {cullMode: 'none'}
+});
 ```
 
 ## Source

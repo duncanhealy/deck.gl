@@ -1,46 +1,139 @@
-import {ScatterplotLayerDemo} from 'website-components/doc-demos/layers';
+---
+description: "ScatterplotLayer renders circles at given coordinates with data-driven radius, fill and stroke."
+---
+
+# ScatterplotLayer
+![webgpu](https://img.shields.io/badge/webgpu-supported-blue.svg?style=flat-square)
+
+import {ScatterplotLayerDemo} from '@site/src/doc-demos/layers';
 
 <ScatterplotLayerDemo />
 
-# ScatterplotLayer
+The `ScatterplotLayer` renders circles at given coordinates.
 
-The Scatterplot Layer takes in paired latitude and longitude coordinated
-points and renders them as circles with a certain radius.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="language">
+  <TabItem value="js" label="JavaScript">
 
 ```js
-import DeckGL from '@deck.gl/react';
+import {Deck} from '@deck.gl/core';
 import {ScatterplotLayer} from '@deck.gl/layers';
 
-function App({data, viewState}) {
-  /**
-   * Data format:
-   * [
-   *   {name: 'Colma (COLM)', code:'CM', address: '365 D Street, Colma CA 94014', exits: 4214, coordinates: [-122.466233, 37.684638]},
-   *   ...
-   * ]
-   */
-  const layer = new ScatterplotLayer({
-    id: 'scatterplot-layer',
-    data,
-    pickable: true,
-    opacity: 0.8,
+const layer = new ScatterplotLayer({
+  id: 'ScatterplotLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+  
+  stroked: true,
+  getPosition: d => d.coordinates,
+  getRadius: d => Math.sqrt(d.exits),
+  getFillColor: [255, 140, 0],
+  getLineColor: [0, 0, 0],
+  getLineWidth: 10,
+  radiusScale: 6,
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck, PickingInfo} from '@deck.gl/core';
+import {ScatterplotLayer} from '@deck.gl/layers';
+
+type BartStation = {
+  name: string;
+  entries: number;
+  exits: number;
+  coordinates: [longitude: number, latitude: number];
+};
+
+const layer = new ScatterplotLayer<BartStation>({
+  id: 'ScatterplotLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+  
+  stroked: true,
+  getPosition: (d: BartStation) => d.coordinates,
+  getRadius: (d: BartStation) => Math.sqrt(d.exits),
+  getFillColor: [255, 140, 0],
+  getLineColor: [0, 0, 0],
+  getLineWidth: 10,
+  radiusScale: 6,
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}: PickingInfo<BartStation>) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {ScatterplotLayer} from '@deck.gl/layers';
+import type {PickingInfo} from '@deck.gl/core';
+
+type BartStation = {
+  name: string;
+  entries: number;
+  exits: number;
+  coordinates: [longitude: number, latitude: number];
+};
+
+function App() {
+  const layer = new ScatterplotLayer<BartStation>({
+    id: 'ScatterplotLayer',
+    data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+    
     stroked: true,
-    filled: true,
+    getPosition: (d: BartStation) => d.coordinates,
+    getRadius: (d: BartStation) => Math.sqrt(d.exits),
+    getFillColor: [255, 140, 0],
+    getLineColor: [0, 0, 0],
+    getLineWidth: 10,
     radiusScale: 6,
-    radiusMinPixels: 1,
-    radiusMaxPixels: 100,
-    lineWidthMinPixels: 1,
-    getPosition: d => d.coordinates,
-    getRadius: d => Math.sqrt(d.exits),
-    getFillColor: d => [255, 140, 0],
-    getLineColor: d => [0, 0, 0]
+    pickable: true
   });
 
-  return <DeckGL viewState={viewState}
+  return <DeckGL
+    initialViewState={{
+      longitude: -122.4,
+      latitude: 37.74,
+      zoom: 11
+    }}
+    controller
+    getTooltip={({object}: PickingInfo<BartStation>) => object && object.name}
     layers={[layer]}
-    getTooltip={({object}) => object && `${object.name}\n${object.address}`} />;
+  />;
 }
 ```
+
+  </TabItem>
+</Tabs>
+
 
 ## Installation
 
@@ -52,18 +145,20 @@ npm install deck.gl
 npm install @deck.gl/core @deck.gl/layers
 ```
 
-```js
+```ts
 import {ScatterplotLayer} from '@deck.gl/layers';
-new ScatterplotLayer({});
+import type {ScatterplotLayerProps} from '@deck.gl/layers';
+
+new ScatterplotLayer<DataT>(...props: ScatterplotLayerProps<DataT>[]);
 ```
 
 To use pre-bundled scripts:
 
 ```html
-<script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^8.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/layers@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@^9.0.0/dist.min.js"></script>
 ```
 
 ```js
@@ -72,80 +167,163 @@ new deck.ScatterplotLayer({});
 
 ## Properties
 
-Inherits from all [Base Layer](/docs/api-reference/core/layer.md) properties.
+Inherits from all [Base Layer](../core/layer.md) properties.
 
 ### Render Options
 
-##### `radiusUnits` (String, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `radiusUnits` (string, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#radiusunits}
 
 * Default: `'meters'`
 
-The units of the point radius, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+The units of the radius, one of `'meters'`, `'common'`, and `'pixels'`. See [unit system](../../developer-guide/coordinate-systems.md#supported-units).
 
-##### `radiusScale` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `radiusScale` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#radiusscale}
 
 * Default: `1`
 
 A global radius multiplier for all points.
 
-##### `lineWidthUnits` (String, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `lineWidthUnits` (string, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#linewidthunits}
 
 * Default: `'meters'`
 
-The units of the line width, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+The units of the line width, one of `'meters'`, `'common'`, and `'pixels'`. See [unit system](../../developer-guide/coordinate-systems.md#supported-units).
 
-##### `lineWidthScale` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `lineWidthScale` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#linewidthscale}
 
 * Default: `1`
 
 A global line width multiplier for all points.
 
-##### `stroked` (Boolean, optional)
+#### `stroked` (boolean, optional) {#stroked}
 
 * Default: `false`
 
-Only draw outline of points. It falls back to `outline` if not provided.
+Draw the outline of points.
 
-##### `filled` (Boolean, optional)
+#### `filled` (boolean, optional) {#filled}
 
 * Default: `true`
 
-Draw the filled area of a point.
+Draw the filled area of points.
 
-##### `radiusMinPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `radiusMinPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#radiusminpixels}
 
 * Default: `0`
 
 The minimum radius in pixels. This prop can be used to prevent the circle from getting too small when zoomed out.
 
-##### `radiusMaxPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `radiusMaxPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#radiusmaxpixels}
 
 * Default: `Number.MAX_SAFE_INTEGER`
 
 The maximum radius in pixels. This prop can be used to prevent the circle from getting too big when zoomed in.
 
-##### `lineWidthMinPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `lineWidthMinPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#linewidthminpixels}
 
 * Default: `0`
 
 The minimum line width in pixels. This prop can be used to prevent the stroke from getting too thin when zoomed out.
 
-##### `lineWidthMaxPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `lineWidthMaxPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#linewidthmaxpixels}
 
 * Default: `Number.MAX_SAFE_INTEGER`
 
 The maximum line width in pixels. This prop can be used to prevent the path from getting too thick when zoomed in.
 
+#### `billboard` (boolean, optional) {#billboard}
+
+- Default: `false`
+
+If `true`, rendered circles always face the camera. If `false` circles face up (i.e. are parallel with the ground plane).
+
+#### `antialiasing` (boolean, optional) {#antialiasing}
+
+- Default: `true`
+
+If `true`, circles are rendered with smoothed edges. If `false`, circles are rendered with rough edges. Antialiasing can cause artifacts on edges of overlapping circles. Also, antialiasing isn't supported in FirstPersonView. 
+
+### Arrow Columns
+
+See [Using with Arrow](../../developer-guide/using-with-arrow.md) for shared input requirements and limitations.
+
+These examples draw the same two circles.
+
+<Tabs groupId="scatterplot-input">
+<TabItem value="rows" label="Row accessors">
+
+```js
+import {ScatterplotLayer} from '@deck.gl/layers';
+
+const layer = new ScatterplotLayer({
+  data: [
+    {position: [-122.4, 37.74], radius: 100},
+    {position: [-122.41, 37.75], radius: 200}
+  ],
+  getPosition: d => d.position,
+  getRadius: d => d.radius,
+  getFillColor: [255, 140, 0]
+});
+```
+
+</TabItem>
+<TabItem value="arrow" label="Arrow columns">
+
+```js
+import {Field, FixedSizeList, Float32, vectorFromArray} from 'apache-arrow';
+import {ScatterplotLayer} from '@deck.gl/layers';
+
+const positions = vectorFromArray(
+  [[-122.4, 37.74], [-122.41, 37.75]],
+  new FixedSizeList(2, new Field('value', new Float32(), false))
+);
+const radii = vectorFromArray([100, 200], new Float32());
+const layer = new ScatterplotLayer({positions, radii, getFillColor: [255, 140, 0]});
+```
+
+
+</TabItem>
+</Tabs>
+
+#### `positions` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric XY or XYZ fixed-size lists specifying circle centers. Overrides [`getPosition`](#getposition).
+
+#### `radii` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric scalar radii in `radiusUnits`. Overrides [`getRadius`](#getradius).
+
+#### `fillColors` (Arrow Vector, optional)
+
+* Default: `null`
+
+RGB or RGBA fixed-size lists specifying fill colors. Overrides [`getFillColor`](#getfillcolor).
+
+#### `lineColors` (Arrow Vector, optional)
+
+* Default: `null`
+
+RGB or RGBA fixed-size lists specifying outline colors. Overrides [`getLineColor`](#getlinecolor).
+
+#### `lineWidths` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric scalar outline widths in `lineWidthUnits`. Overrides [`getLineWidth`](#getlinewidth).
 
 ### Data Accessors
 
-##### `getPosition` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getPosition` ([Accessor&lt;Position&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getposition}
 
 * Default: `object => object.position`
 
 Method called to retrieve the position of each object.
 
-##### `getRadius` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getRadius` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getradius}
 
 * Default: `1`
 
@@ -154,7 +332,7 @@ The radius of each object, in units specified by `radiusUnits` (default meters).
 * If a number is provided, it is used as the radius for all objects.
 * If a function is provided, it is called on each object to retrieve its radius.
 
-##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getcolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -165,7 +343,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 
 It will be overridden by `getLineColor` and `getFillColor` if these new accessors are specified.
 
-##### `getFillColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getFillColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getfillcolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -175,7 +353,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 * If a function is provided, it is called on each object to retrieve its color.
 * If not provided, it falls back to `getColor`.
 
-##### `getLineColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getLineColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getlinecolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -185,7 +363,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 * If a function is provided, it is called on each object to retrieve its color.
 * If not provided, it falls back to `getColor`.
 
-##### `getLineWidth` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getLineWidth` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getlinewidth}
 
 * Default: `1`
 
@@ -194,6 +372,15 @@ The width of the outline of each object, in units specified by `lineWidthUnits` 
 * If a number is provided, it is used as the outline width for all objects.
 * If a function is provided, it is called on each object to retrieve its outline width.
 * If not provided, it falls back to `strokeWidth`.
+
+#### `getPixelOffset` ([Accessor&lt;number[2]&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getpixeloffset}
+
+* Default: `[0, 0]`
+
+Screen space offset relative to the `coordinates` in pixel unit.
+
+* If an array is provided, it is used as the offset for all objects.
+* If a function is provided, it is called on each object to retrieve its offset.
 
 ## Source
 

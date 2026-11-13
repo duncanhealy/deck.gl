@@ -1,16 +1,24 @@
+---
+description: "Rendering, data handling and performance tips for building deck.gl applications."
+---
+
 # Tips and Tricks
 
 
 ## Rendering Tips
 
-## Per Layer Control of WebGL parameters
+### Per Layer Control of GPU parameters
 
-The base `Layer` class (which is inherited by all layers) supports a `parameters` property that allows applications to specify the state of WebGL parameters such as blending mode, depth testing etc. This can provide signigicant extra control over rendering.
+The base `Layer` class (which is inherited by all layers) supports a `parameters` property that allows applications to specify the state of GPU parameters such as blending mode, depth testing etc. This can provide significant extra control over rendering.
 
-The new `parameters` prop leverages the luma.gl v4 [setParameters](https://luma.gl/docs/api-reference/gltools/parameter-setting) API, which allows all WebGL parameters to be specified as keys in a single parameter object.
+```js
+const layer = new ScatterplotLayer({
+  ...,
+  parameters: {depthCompare: 'always'}
+});
+```
 
-
-## z-fighting and Depth Testing
+### z-fighting and Depth Testing
 
 A common problem faced by 3D application developers is known as "z fighting". It relates to multiple objects being drawn at the same depth in the 3D scene, and due to rounding artifacts in the so called z buffer the GPU cannot accurately determine whether a pixel has already been drawn in a specific place.
 
@@ -20,7 +28,7 @@ If you are not using 3D extrusions, the easiest way to get rid of z fighting is 
 new ...Layer({
   ...,
   parameters: {
-    depthTest: false
+    depthCompare: 'always'
   }
 });
 ```
@@ -28,7 +36,7 @@ new ...Layer({
 Also, if the z-fighting occurs between layers (rather than between elements within a single layers), deck.gl offers a slightly more sophisticated `polygonOffset` property.
 
 
-## Browser Blending Modes
+### Browser Blending Modes
 
 > Occasionally, the default blending in the browser does not give ideal results. In that case you may want to test the tips in this section.
 
@@ -55,14 +63,44 @@ If this is an issue, set the `isolation` CSS prop on the `DeckGL` parent element
 
 ## Optimization for Mobile
 
+### Mobile Browser Touch UI
+
+For mobile experiences using a deck.gl [Controller](../api-reference/core/controller.md), use CSS guards on the Deck canvas/root element so repeated touch gestures do not trigger browser selection, tap highlight, or WebKit touch callouts:
+
+```css
+#deck-root,
+#deck-root canvas {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+```
+
+Some iOS embeds may still surface native callout UI during long-press or rapid double-tap gestures. In those cases, prevent the browser-native UI events that originate from the canvas without stopping pointer event propagation. The controller still needs deck.gl's pointer events to receive the gesture sequence.
+
+```js
+const root = document.getElementById('deck-root');
+const preventCanvasBrowserUI = event => {
+  if (event.target instanceof HTMLCanvasElement) {
+    event.preventDefault();
+  }
+};
+
+for (const type of ['contextmenu', 'selectstart', 'gesturestart', 'gesturechange', 'gestureend']) {
+  root.addEventListener(type, preventCanvasBrowserUI, {passive: false});
+}
+```
+
 ### Experimental Memory Usage Controls
 
 The `Deck` class supports the following experimental props to aggressively reduce memory usage on memory-restricted devices:
 
-- [_pickable](/docs/api-reference/core/deck.md#_pickable)
-- [_typedArrayManagerProps](/docs/api-reference/core/deck.md#_typedArrayManagerProps)
+- [_pickable](../api-reference/core/deck.md#_pickable)
+- [_typedArrayManagerProps](../api-reference/core/deck.md#_typedarraymanagerprops)
 
-The app can sacrefice certain features and/or runtime performance in exchange for a smaller memory footprint:
+The app can sacrifice certain features and/or runtime performance in exchange for a smaller memory footprint:
 
 ```js
 new Deck({

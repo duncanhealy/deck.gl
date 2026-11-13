@@ -2,7 +2,6 @@ import pandas as pd
 
 from pydeck import Deck, Layer, ViewState
 
-
 data = [
     {"position": [-0.002, 0.002], "rgb": [136, 45, 97]},
     {"position": [-0.002, -0.002], "rgb": [170, 57, 57]},
@@ -16,7 +15,12 @@ df = pd.DataFrame([{"position": [0, 0], "text": "Test"}, {"position": [0.002, 0]
 def create_stacked_test_object():
     view_state = ViewState(max_zoom=20, zoom=15)
     scatterplot = Layer(
-        "ScatterplotLayer", data=data, get_position="position", get_radius=100, id="first", getColor="rgb",
+        "ScatterplotLayer",
+        data=data,
+        get_position="position",
+        get_radius=100,
+        id="first",
+        getColor="rgb",
     )
     text_layer = Layer(
         "TextLayer",

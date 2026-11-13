@@ -1,83 +1,92 @@
 {
+  "ts-node": {
+    "include": [
+      "modules",
+      "test/modules"
+    ],
+    // It is faster to skip typechecking. Remove if you want ts-node to do typechecking.
+    "transpileOnly": true
+  },
   "compilerOptions": {
     "target": "es2020",
+    "module": "es2020",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "jsx": "react",
     "strict": true,
     "noImplicitAny": false,
     "allowJs": true,
-    "checkJs": true,
-    "moduleResolution": "node",
+    "checkJs": false,
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "noEmit": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    "skipLibCheck": true,
     "paths": {
-      "@deck.gl/core/*": ["modules/core/src/*"],
-      "@deck.gl/core/test": ["modules/core/test"],
-      "@deck.gl/extensions/*": ["modules/extensions/src/*"],
-      "@deck.gl/extensions/test": ["modules/extensions/test"],
-      "@deck.gl/json/*": ["modules/json/src/*"],
-      "@deck.gl/json/test": ["modules/json/test"],
-      "@deck.gl/main/*": ["modules/main/src/*"],
-      "@deck.gl/main/test": ["modules/main/test"],
-      "@deck.gl/test-utils/*": ["modules/test-utils/src/*"],
-      "@deck.gl/test-utils/test": ["modules/test-utils/test"],
+      "@luma.gl/core/webgl-constants": ["./node_modules/@luma.gl/core/dist/webgl-constants"],
+      "@luma.gl/graph/gpu-simple-graph/webgpu": ["./node_modules/@luma.gl/graph/dist/gpu-simple-graph/operations/webgpu/index"],
+      "@deck.gl/proposals/layers/path-layer": ["./modules/proposals/src/layers/path-layer/path-layer.ts"],
+      "@deck.gl/proposals/layers/polygon-layer": ["./modules/proposals/src/layers/polygon-layer/polygon-layer.ts"],
+      "@deck.gl/proposals/layers/solid-polygon-layer": ["./modules/proposals/src/layers/solid-polygon-layer/solid-polygon-layer.ts"],
+      "@deck.gl/proposals/layers/text-layer": ["./modules/proposals/src/layers/text-layer/text-layer.ts"],
+      "@deck.gl/proposals/layers": ["./modules/proposals/src/layers"],
+      "@deck.gl/proposals/effects": ["./modules/proposals/src/effects"],
+      "@deck.gl/aggregation-layers": ["./modules/aggregation-layers/src"],
+      "@deck.gl/arcgis": ["./modules/arcgis/src"],
+      "@deck.gl/carto": ["./modules/carto/src"],
+      "@deck.gl/core/arrow": ["./modules/core/src/arrow/upstream-luma/arrow-converter"],
+      "@deck.gl/core": ["./modules/core/src"],
+      "@deck.gl/extensions": ["./modules/extensions/src"],
+      "@deck.gl/geo-layers": ["./modules/geo-layers/src"],
+      "@deck.gl/google-maps": ["./modules/google-maps/src"],
+      "@deck.gl/json": ["./modules/json/src"],
+      "@deck.gl/jupyter-widget": ["./modules/jupyter-widget/src"],
+      "@deck.gl/layers": ["./modules/layers/src"],
+      "deck.gl": ["./modules/main/src"],
+      "@deck.gl/mapbox": ["./modules/mapbox/src"],
+      "@deck.gl/maplibre": ["./modules/maplibre/src"],
+      "@deck.gl/mesh-layers": ["./modules/mesh-layers/src"],
+      "@deck.gl/react": ["./modules/react/src"],
+      "@deck.gl/test-utils": ["./modules/test-utils/src"],
 
-      "@deck.gl/react/*": ["modules/react/src/*"],
-      "@deck.gl/react/test": ["modules/react/test"],
-
-      "@deck.gl/jupyter-widget/*": ["modules/jupyter-widget/src/*"],
-      "@deck.gl/jupyter-widget/test": ["modules/jupyter-widget/test"],
-
-      "@deck.gl/arcgis/*": ["modules/arcgis/src/*"],
-      "@deck.gl/arcgis/test": ["modules/arcgis/test"],
-      "@deck.gl/carto/*": ["modules/carto/src/*"],
-      "@deck.gl/carto/test": ["modules/carto/test"],
-      "@deck.gl/mapbox/*": ["modules/mapbox/src/*"],
-      "@deck.gl/mapbox/test": ["modules/mapbox/test"],
-      "@deck.gl/google/*": ["modules/google/src/*"],
-      "@deck.gl/google/test": ["modules/google/test"],
-
-      "@deck.gl/layers/*": ["modules/layers/src/*"],
-      "@deck.gl/layers/test": ["modules/layers/test"],
-      "@deck.gl/geo-layers/*": ["modules/geo-layers/src/*"],
-      "@deck.gl/geo-layers/test": ["modules/geo-layers/test"],
-      "@deck.gl/aggregation-layers/*": ["modules/aggregation-layers/src/*"],
-      "@deck.gl/aggregation-layers/test": ["modules/aggregation-layers/test"],
-      "@deck.gl/mesh-layers/*": ["modules/mesh-layers/src/*"],
-      "@deck.gl/mesh-layers/test": ["modules/mesh-layers/test"],
-
-      "test": ["test"]
-    }
+      "deck.gl-test/*": ["./test/*"]
+    },
+    "typeRoots": ["./node_modules/@types"],
+    "plugins": [
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-version-inline"
+      },
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-remove-glsl-comments",
+        "pattern": ["**/*.glsl.ts"]
+      },
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-inline-webgl-constants"
+      },
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-webgpu",
+        "webGPUEnabled": true
+      },
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-append-extension",
+        "extensions": [".js", ".glsl.js", ".wgsl.js"],
+        "after": true
+      },
+      {
+        "transform": "@vis.gl/ts-plugins/ts-transform-append-extension",
+        "extensions": [".js", ".glsl.js", ".wgsl.js"],
+        "afterDeclarations": true
+      }
+    ]
   },
   "include": [
-    "modules/core/src/**/*.js",
-    "modules/extensions/src/**/*.js",
-    "modules/json/src/**/*.js",
-    "modules/main/src/**/*.js",
-    "modules/test-utils/src/**/*.js",
-    "modules/react/src/**/*.js",
-    "modules/arcgis/src/**/*.js",
-    "modules/carto/src/**/*.js",
-    "modules/mapbox/src/**/*.js",
-    "modules/google/src/**/*.js",
-    "modules/layers/src/**/*.js",
-    "modules/geo-layers/src/**/*.js",
-    "modules/aggregation-layers/src/**/*.js",
-    "modules/mesh-layers/src/**/*.js"
-  ],
-  "exclude":[
-    "modules/jupyter-widget/src/**/*.js",
-
-    "modules/**/test/**/**/*.js",
-
-    "modules/**/src/libs/*",
-    "modules/*/dist/**/*",
-    "modules/**/wip/**/*",
-    "examples",
-    "coverage",
-    "website",
+    "modules",
     "test",
+    "examples",
+    "vitest.config.ts",
+    "vitest.workspace.ts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/dist"
   ]
 }

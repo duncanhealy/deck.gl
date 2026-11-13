@@ -1,0 +1,65 @@
+/** @typedef {import('@vis.gl/dev-tools').OcularConfig} OcularConfig */
+import {dirname, join} from 'path';
+import {fileURLToPath} from 'url';
+
+const packageRoot = dirname(fileURLToPath(import.meta.url));
+const lumaModules = join(packageRoot, '../luma.gl/modules');
+
+const LUMA_ALIASES_LOCAL = {
+  '@luma.gl/constants': `${lumaModules}/constants/src`,
+  '@luma.gl/core': `${lumaModules}/core/src`,
+  '@luma.gl/engine': `${lumaModules}/engine/src`,
+  '@luma.gl/core/webgl': `${lumaModules}/core/src/webgl`,
+  '@luma.gl/shaders': `${lumaModules}/shaders/src`,
+  '@luma.gl/core/test-utils': `${lumaModules}/core/src/test-utils`,
+  '@luma.gl/experimental': `${lumaModules}/experimental/src`
+};
+
+const useLocalLuma = false;
+
+/** @type {OcularConfig} */
+const config = {
+  lint: {
+    paths: ['modules', 'test', 'examples']
+    // paths: ['modules', 'test', 'examples', 'website']
+  },
+
+  babel: false,
+
+  bundle: {
+    globalName: 'deck',
+    // LERC loads this Node builtin only in its Node.js initialization branch.
+    externals: ['h3-js', 'module'],
+    target: ['chrome110', 'firefox110', 'safari15'],
+    format: 'umd',
+    globals: {
+      '@deck.gl/*': 'globalThis.deck',
+      '@luma.gl/core': 'globalThis.luma',
+      '@luma.gl/engine': 'globalThis.luma',
+      '@loaders.gl/core': 'globalThis.loaders',
+      'h3-js': 'globalThis.h3 || {}',
+      module: 'globalThis.process?.getBuiltinModule?.(\'module\') || {}'
+    }
+  },
+
+  aliases: {
+    'deck.gl-test': join(packageRoot, './test')
+  },
+
+  coverage: {
+    test: 'browser'
+  },
+
+  entry: {
+    // TODO: Migrate bench and size to vitest (Phase 7)
+    bench: 'test/bench/index.js',
+    'bench-browser': 'test/bench/browser.html',
+    size: 'test/size/import-nothing.js'
+  }
+};
+
+if (useLocalLuma) {
+  Object.assign(config.aliases, LUMA_ALIASES_LOCAL);
+}
+
+export default config;

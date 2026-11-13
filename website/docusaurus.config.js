@@ -1,0 +1,336 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+// @ts-check
+// Note: type annotations allow type checking and IDEs autocompletion
+
+import {themes as prismThemes} from 'prism-react-renderer';
+const lightCodeTheme = prismThemes.nightOwlLight;
+const darkCodeTheme = prismThemes.nightOwl;
+
+const {getSwcLoaderOptions, rspack} = require('@docusaurus/faster');
+const {resolve} = require('path');
+const websiteBaseUrl = process.env.WEBSITE_BASE_URL || '/';
+const websiteBasePathSegments = websiteBaseUrl.split('/').filter(Boolean);
+const websiteBasePath =
+  websiteBasePathSegments.length === 0 ? '' : `/${websiteBasePathSegments.join('/')}`;
+
+/** Prefix a site-relative route with the configured website base path (staging builds). */
+function prefixWebsiteRoute(route) {
+  return `${websiteBasePath}${route}`;
+}
+
+/** @type {import('@docusaurus/types').Config} */
+const config = {
+  title: 'deck.gl',
+  tagline: 'GPU-powered, highly performant large-scale data visualization',
+  url: 'https://deck.gl',
+  baseUrl: websiteBaseUrl,
+  onBrokenLinks: 'throw',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn'
+    }
+  },
+  favicon: '/favicon.png',
+  organizationName: 'visgl', // Usually your GitHub org/user name.
+  projectName: 'deck.gl', // Usually your repo name.
+  trailingSlash: false,
+  future: {
+    v4: {
+      removeLegacyPostBuildHeadAttribute: true
+    },
+    faster: {
+      // Use a custom SWC loader below so styled-components receives stable SSR component IDs.
+      swcJsLoader: false,
+      swcJsMinimizer: true,
+      swcHtmlMinimizer: true,
+      lightningCssMinimizer: true,
+      mdxCrossCompilerCache: true,
+      rspackBundler: true,
+      rspackPersistentCache: true,
+      ssgWorkerThreads: true,
+      gitEagerVcs: true
+    }
+  },
+
+  webpack: {
+    jsLoader(isServer) {
+      const options = getSwcLoaderOptions({isServer, bundlerName: 'rspack'});
+      options.jsc.experimental = {
+        plugins: [
+          [
+            require.resolve('@swc/plugin-styled-components'),
+            {displayName: true, ssr: true}
+          ]
+        ]
+      };
+
+      return {
+        loader: 'builtin:swc-loader',
+        options
+      };
+    }
+  },
+
+  presets: [
+    [
+      'classic',
+      /** @type {import('@docusaurus/preset-classic').Options} */
+      ({
+        docs: {
+          path: '../docs',
+          sidebarPath: resolve('./src/docs-sidebar.js'),
+          // Point to to the website directory in your repo.
+          editUrl: 'https://github.com/visgl/deck.gl/tree/master/website'
+        },
+        theme: {
+          customCss: [
+            resolve('./src/styles.css'),
+            resolve('./node_modules/maplibre-gl/dist/maplibre-gl.css'),
+            resolve('../modules/widgets/dist/stylesheet.css')
+          ]
+        }
+      })
+    ]
+  ],
+
+  plugins: [
+    // Publishes /llms.txt (a curated Markdown index of the documentation) and a raw
+    // Markdown sibling for every docs page (e.g. /docs/api-reference/json/overview.md),
+    // so coding agents can read current deck.gl documentation at inference time.
+    // Mirrors the setup used by luma.gl (https://luma.gl/llms.txt).
+    [
+      '@signalwire/docusaurus-plugin-llms-txt',
+      {
+        siteTitle: 'deck.gl',
+        siteDescription:
+          'GPU-powered, highly performant large-scale data visualization. Layers, views, ' +
+          'base map integrations (MapLibre, Mapbox, Google Maps, ArcGIS), the @deck.gl/json ' +
+          'declarative format, and the developer guide.',
+        // Plugin 1.x builds its route tree from base-prefixed Docusaurus paths.
+        // Preserve the configured three levels after the post-build base-path normalization
+        // (scripts/normalize-llm-output.mjs).
+        depth: Math.min(5, 3 + websiteBasePathSegments.length),
+        enableDescriptions: true,
+        includeOrder: [
+          '/docs/get-started/**',
+          '/docs/whats-new',
+          '/docs/upgrade-guide',
+          '/docs/developer-guide/**',
+          '/docs/api-reference/**'
+        ].map(prefixWebsiteRoute),
+        onRouteError: 'warn',
+        content: {
+          enableMarkdownFiles: true,
+          enableLlmsFullTxt: false,
+          relativePaths: false,
+          includeBlog: false,
+          includePages: false,
+          includeDocs: true,
+          includeVersionedDocs: false,
+          includeGeneratedIndex: true,
+          // /examples is the only other docs instance; TEST-STATUS is an internal tracker.
+          excludeRoutes: ['/examples/**', '/docs/TEST-STATUS'].map(prefixWebsiteRoute)
+        }
+      }
+    ],
+    [
+      './ocular-docusaurus-plugin',
+      {
+        debug: true,
+        resolve: {
+          // Resolve dependencies through their package export maps, including subpaths.
+          modules: [resolve('node_modules'), resolve('../node_modules')],
+          alias: {
+            '@deck.gl/aggregation-layers': resolve('../modules/aggregation-layers/dist'),
+            '@deck.gl/arcgis': resolve('../modules/arcgis/dist'),
+            '@deck.gl/carto': resolve('../modules/carto/dist'),
+            '@deck.gl/core/arrow': resolve('../modules/core/dist/arrow/upstream-luma/arrow-converter.js'),
+            '@deck.gl/core': resolve('../modules/core/dist'),
+            '@deck.gl/extensions': resolve('../modules/extensions/dist'),
+            '@deck.gl/geo-layers': resolve('../modules/geo-layers/dist'),
+            '@deck.gl/proposals/layers': resolve('../modules/proposals/src/layers/index.ts'),
+            '@deck.gl/google-maps': resolve('../modules/google-maps/dist'),
+            '@deck.gl/json': resolve('../modules/json/dist'),
+            '@deck.gl/layers': resolve('../modules/layers/dist'),
+            '@deck.gl/mapbox': resolve('../modules/mapbox/dist'),
+            '@deck.gl/maplibre': resolve('../modules/maplibre/dist'),
+            '@deck.gl/mesh-layers': resolve('../modules/mesh-layers/dist'),
+            '@deck.gl/react': resolve('../modules/react/dist'),
+            '@deck.gl/widgets': resolve('../modules/widgets/dist'),
+            'proposal-examples': resolve('../examples/proposals'),
+            'website-examples': resolve('../examples/website'),
+            react: resolve('node_modules/react'),
+            'react-dom': resolve('node_modules/react-dom')
+          }
+        },
+        plugins: [
+          new rspack.EnvironmentPlugin([
+            'MapboxAccessToken',
+            'GoogleMapsAPIKey',
+            'GoogleMapsMapId'
+          ]),
+          // These modules break server side bundling
+          new rspack.IgnorePlugin({
+            resourceRegExp: /asciify-image/
+          })
+        ],
+        module: {
+          rules: [
+            // https://github.com/Esri/calcite-components/issues/2865
+            {
+              test: /\.m?js/,
+              resolve: {
+                fullySpecified: false
+              }
+            }
+          ]
+        }
+      }
+    ],
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'examples',
+        path: './src/examples',
+        routeBasePath: 'examples',
+        sidebarPath: resolve('./src/examples-sidebar.js'),
+        breadcrumbs: false,
+        docItemComponent: resolve('./src/components/example/doc-item-component.jsx')
+      }
+    ]
+  ],
+
+  themeConfig:
+    /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
+    ({
+      navbar: {
+        title: 'deck.gl',
+        logo: {
+          alt: 'vis.gl Logo',
+          src: 'images/visgl-logo-dark.png',
+          srcDark: 'images/visgl-logo-light.png'
+        },
+        items: [
+          {
+            to: '/examples',
+            position: 'left',
+            label: 'Examples'
+          },
+          {
+            to: '/docs',
+            position: 'left',
+            label: 'Docs'
+          },
+          {
+            to: '/showcase',
+            position: 'left',
+            label: 'Showcase'
+          },
+          {
+            to: 'https://medium.com/vis-gl',
+            label: 'Blog',
+            position: 'left'
+          },
+          {
+            href: 'https://github.com/visgl/deck.gl',
+            label: 'GitHub',
+            position: 'right'
+          },
+          {
+            type: 'html',
+            position: 'right',
+            value: '<a href="https://openvisualization.org" target="_blank" style="content: \'\'; height: 24px; width: 80px; background-image: url(\'/openjs-foundation.svg\'); background-repeat: no-repeat;  background-size: 80px 24px; display: flex"></a>'
+          }
+        ]
+      },
+      footer: {
+        style: 'dark',
+        links: [
+          {
+            title: 'Resources',
+            items: [
+              {
+                label: 'API Reference',
+                to: '/docs/api-reference/core/deck'
+              },
+              {
+                label: 'Starter templates',
+                href: 'https://github.com/visgl/deck.gl/tree/master/examples/get-started'
+              },
+              {
+                label: 'Playground',
+                href: '/playground'
+              },
+              {
+                label: 'Pydeck',
+                href: '/pydeck'
+              },
+              {
+                label: 'Codepen demos',
+                href: 'https://codepen.io/vis-gl/'
+              }
+            ]
+          },
+          {
+            title: 'Other vis.gl Libraries',
+            items: [
+              {
+                label: 'deck.gl-community',
+                href: 'https://visgl.github.io/deck.gl-community/'
+              },
+              {
+                label: 'luma.gl',
+                href: 'https://luma.gl'
+              },
+              {
+                label: 'loaders.gl',
+                href: 'https://loaders.gl'
+              },
+              {
+                label: 'react-map-gl',
+                href: 'https://visgl.github.io/react-map-gl'
+              }
+            ]
+          },
+          {
+            title: 'More',
+            items: [
+              {
+                label: 'Slack workspace',
+                href: 'https://slack-invite.openjsf.org'
+              },
+              {
+                label: 'vis.gl blog on Medium',
+                href: 'https://medium.com/vis-gl'
+              },
+              {
+                label: 'GitHub',
+                href: 'https://github.com/visgl/deck.gl'
+              }
+            ]
+          }
+        ],
+        copyright: '<div class="footer-copy">Copyright <a href="https://openjsf.org">OpenJS Foundation</a> and vis.gl contributors. All rights reserved. The <a href="https://openjsf.org">OpenJS Foundation</a> has registered trademarks and uses trademarks. For a list of trademarks of the <a href="https://openjsf.org">OpenJS Foundation</a>, please see our <a href="https://trademark-policy.openjsf.org">Trademark Policy</a> and <a href="https://trademark-list.openjsf.org">Trademark List</a>. Trademarks and logos not indicated on the <a href="https://trademark-list.openjsf.org">list of OpenJS Foundation trademarks</a> are trademarks&trade; or registered&reg; trademarks of their respective holders. Use of them does not imply any affiliation with or endorsement by them.<br><br><a href="https://openjsf.org">The OpenJS Foundation</a> | <a href="https://terms-of-use.openjsf.org">Terms of Use</a> | <a href="https://privacy-policy.openjsf.org">Privacy Policy</a> | <a href="https://bylaws.openjsf.org">Bylaws</a> | <a href="https://code-of-conduct.openjsf.org">Code of Conduct</a> | <a href="https://trademark-policy.openjsf.org">Trademark Policy</a> | <a href="https://trademark-list.openjsf.org">Trademark List</a> | <a href="https://www.linuxfoundation.org/cookies">Cookie Policy</a></div>'
+      },
+      algolia: {
+        // The application ID provided by Algolia
+        appId: '8EVYAVB4KT',
+        // Public API key: it is safe to commit it
+        apiKey: 'a3fe1388353d733272ffdf148c53eeaa',
+        indexName: 'deck',
+        // Optional: see doc section below
+        contextualSearch: true,
+        // Optional: path for search page that enabled by default (`false` to disable it)
+        searchPagePath: false
+      },
+      prism: {
+        theme: lightCodeTheme,
+        darkTheme: darkCodeTheme
+      }
+    })
+};
+
+module.exports = config;

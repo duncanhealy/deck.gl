@@ -1,30 +1,33 @@
-import * as deckBundle from '../deck-bundle';
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {Layer} from '@deck.gl/core';
 
 import {Transport} from '@deck.gl/json';
 
 import {createContainer} from './utils/css-utils';
 
 import {loadMapboxCSS} from './utils/mapbox-utils';
+import {loadMapLibreCSS} from './utils/maplibre-utils';
 
-import {jsonConverter, createDeck} from './create-deck';
+import {createDeck, updateDeck} from './create-deck';
 
 export function initPlayground() {
   Transport.setCallbacks({
     onInitialize({transport}) {
       // Extract "deck.gl playground" props
-      const {width, height, customLibraries, mapboxApiKey, jsonInput, tooltip} = getPlaygroundProps(
-        transport
-      );
+      const {width, height, customLibraries, mapboxApiKey, jsonInput, tooltip} =
+        getPlaygroundProps(transport);
 
-      // Load mapbox CSS
-      loadMapboxCSS();
+      const jsonProps = JSON.parse(jsonInput);
+
+      loadBasemapCSS(jsonProps.mapProvider);
 
       // Create container div for deck.gl
       const transportRootElement = transport.getRootDOMElement();
       const deckContainer = createContainer(width, height);
       transportRootElement.appendChild(deckContainer);
-
-      const jsonProps = JSON.parse(jsonInput);
 
       const deck = createDeck({
         mapboxApiKey,
@@ -45,22 +48,18 @@ export function initPlayground() {
 
     onMessage({transport, type, json, binary}) {
       const {deck} = transport.userData;
-      let convertedJson;
       switch (type) {
         case 'json':
-          convertedJson = jsonConverter.convert(json);
-          deck.setProps(convertedJson);
+          updateDeck(json, deck);
           break;
 
-        case 'json-with-binary':
-          convertedJson = jsonConverter.convert(json);
+        case 'json-with-binary': {
           const binaryData = transport.jupyterModel.get('data_buffer');
-          const propsWithBinary = processDataBuffer({
-            binary: binaryData,
-            convertedJson
-          });
-          deck.setProps(propsWithBinary);
+          updateDeck(json, deck, convertedJson =>
+            processDataBuffer({binary: binaryData, convertedJson})
+          );
           break;
+        }
 
         default:
         // console.warn(type)
@@ -70,6 +69,13 @@ export function initPlayground() {
 }
 
 // HELPER FUNCTIONS
+
+export function loadBasemapCSS(mapProvider) {
+  loadMapboxCSS();
+  if (mapProvider === 'maplibre') {
+    loadMapLibreCSS();
+  }
+}
 
 // Takes JSON props and combines them with the binary data buffer
 export function processDataBuffer({binary, convertedJson}) {
@@ -84,7 +90,8 @@ export function processDataBuffer({binary, convertedJson}) {
 
 // Filters circular references on JSON string conversion
 function filterJsonValue(key, value) {
-  return value instanceof deckBundle.Layer ? value.id : value;
+  // eslint-disable-next-line
+  return value instanceof Layer ? value.id : value;
 }
 
 // Handles a general event

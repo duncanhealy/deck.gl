@@ -1,0 +1,71 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {fp32, ShaderModule} from '@luma.gl/shaders';
+import {Buffer} from '@luma.gl/core';
+import geometry from '../misc/geometry';
+import {getUniformsFromViewport} from './viewport-uniforms';
+import {projectWGSL} from './project.wgsl';
+import {projectGLSL} from './project.glsl';
+import {PROJECTION_MODE} from './constants';
+import type Viewport from '../../viewports/viewport';
+
+import type {ProjectProps, ProjectUniforms} from './viewport-uniforms';
+import type CustomProjectionViewport from '../../viewports/custom-projection-viewport';
+
+const INITIAL_MODULE_OPTIONS = {};
+
+function getUniforms(opts: ProjectProps | {} = INITIAL_MODULE_OPTIONS) {
+  if ('viewport' in opts) {
+    return {
+      ...getUniformsFromViewport(opts),
+      sizeScaleTransform: opts.sizeScaleTransform ||
+        (opts.viewport as CustomProjectionViewport).sizeScaleTransform || [1, 1, 0, 0],
+      ...(opts.sizeScale instanceof Buffer
+        ? {
+            project_sizeScaleBuffer: opts.sizeScale,
+            sizeScaleSize: Math.sqrt(opts.sizeScale.byteLength / 16)
+          }
+        : opts.sizeScale
+          ? {project_sizeScaleTexture: opts.sizeScale, sizeScaleSize: opts.sizeScale.width}
+          : {sizeScaleSize: 0})
+    };
+  }
+  return {};
+}
+
+export default {
+  name: 'project',
+  dependencies: [fp32, geometry],
+  source: projectWGSL,
+  vs: projectGLSL,
+  getUniforms,
+  /** @internal Whether aggregation uses the viewport's linear target-CRS space. */
+  isCustomProjection: (viewport: Viewport): boolean =>
+    viewport.projectionMode === PROJECTION_MODE.CUSTOM_GEOSPATIAL,
+  uniformTypes: {
+    wrapLongitude: 'f32',
+    coordinateFrame: 'i32',
+    commonUnitsPerMeter: 'vec3<f32>',
+    projectionMode: 'i32',
+    scale: 'f32',
+    commonUnitsPerWorldUnit: 'vec3<f32>',
+    commonUnitsPerWorldUnit2: 'vec3<f32>',
+    center: 'vec4<f32>',
+    modelMatrix: 'mat4x4<f32>',
+    viewProjectionMatrix: 'mat4x4<f32>',
+    viewportSize: 'vec2<f32>',
+    devicePixelRatio: 'f32',
+    focalDistance: 'f32',
+    cameraPosition: 'vec3<f32>',
+    coordinateOrigin: 'vec3<f32>',
+    commonOrigin: 'vec3<f32>',
+    pseudoMeters: 'f32',
+    sizeScaleSize: 'i32',
+    sizeScaleTransform: 'vec4<f32>'
+  }
+  // @ts-ignore TODO v9.1
+} as const satisfies ShaderModule<ProjectProps, ProjectUniforms, {}> & {
+  isCustomProjection: (viewport: Viewport) => boolean;
+};

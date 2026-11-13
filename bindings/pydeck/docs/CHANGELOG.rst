@@ -1,23 +1,120 @@
 CHANGELOG
-================
+=========
 
 Releases and associated GitHub PRs for pydeck are documented here.
+
+0.9 Releases
+------------
+
+0.9.4 - TBD
+^^^^^^^^^^^
+- Update to deck.gl v9.4
+- Add typed layer extensions through ``pydeck.Extension`` (#10447)
+- Register the canonical ``GlobeView`` type name in the Jupyter widget (#10451)
+- Add typed lighting and post-processing effects through ``pydeck.Effect`` (#10455)
+- Remove ``LightSettings``, which targeted the unsupported deck.gl ``lightSettings`` layer prop (#10455)
+- Add MapLibre basemap provider with globe projection via ``map_provider="maplibre"`` (#10566)
+- Add multi-view layout and ``SplitterWidget`` documentation and gallery examples
+- ``Deck`` no longer serializes a default ``MapView``; the new ``controller`` argument (default ``True``) is sent instead, so deck.gl supplies the view and widgets such as ``SplitterWidget`` can manage views
+- Fix ``register_library`` writing a ``uri`` key instead of ``resourceUri``, which left the library
+  unloaded (#10759)
+- Add non-geospatial chart gallery examples (scatter plot, bar chart, surface plot) and document
+  ``OrthographicView`` and ``OrbitView`` view states (#10454)
+- Load ES module custom libraries with ``pydeck.settings.register_library(name, uri, module=True)``
+  (#10454)
+- Experimental: ES module custom libraries can import deck.gl, luma.gl, loaders.gl and math.gl by
+  package name and share pydeck's copies (#10794)
+- Experimental: ``settings.register_library(npm=...)`` loads an npm package as an ES module from esm.sh,
+  matching ``@deck.gl-community`` packages to pydeck's deck.gl version (#10797)
+- Add a Paris Trees gallery example, drawn with ``TreeLayer`` from ``@deck.gl-community/three``
+- Embed the deck JSON in ``to_html`` output compactly to reduce file size
+- Fix ``register_library`` adding a duplicate entry when a name is registered again (#10949)
+
+0.9.3 - Jul 2026
+^^^^^^^^^^^^^^^^^^^
+- Update to deck.gl v9.3 (#10242)
+- Add PopupWidget and InfoWidget to widget gallery example
+- Add pydeck playground at `deck.gl/pydeck <https://deck.gl/pydeck>`__
+
+0.9.2 - Apr 16 2026
+^^^^^^^^^^^^^^^^^^^
+- Update to deck.gl v9.2 (#9895)
+- Add support for deck.gl widgets (#9342)
+- Support custom widgets via custom_libraries (#9745)
+- Support Maplibre including Globe projection (#9896)
+- Set default map style if not provided (#9419)
+- Add show_error flag to display error in cell output (#9430)
+- Fix pandas 3.x compatibility (#9988)
+- Migrate dev setup, CI, and ReadTheDocs to uv (#10186)
+
+0.9.1 - May 10 2024
+^^^^^^^^^^^^^^^^^^^
+- Fix pydeck iframe height in Google Colab (#8881)
+
+0.9.0 - Apr 29 2024
+^^^^^^^^^^^^^^^^^^^
+- Update to deck.gl v9.0
+- BREAKING CHANGE: Jupyter-specific features not currently supported
+
+0.9.0b0 - Apr 24 2024
+^^^^^^^^^^^^^^^^^^^^^
+- Update to deck.gl v9.0
+
+0.8 Releases
+------------
+
+0.8.1b1 - Apr 24 2024
+^^^^^^^^^^^^^^^^^^^^^
+- Update to deck.gl v8.9
+
+0.8.0 - Nov 04 2022
+^^^^^^^^^^^^^^^^^^^
+
+0.8.0b4 - Oct 12 2022
+^^^^^^^^^^^^^^^^^^^^^
+- Fix pydeck render in Google Colab (#7325)
+- Add default_layer_attributes in settings. Improve variable substitution in tooltips (#7330)
+
+0.8.0b3 - Sep 09 2022
+^^^^^^^^^^^^^^^^^^^^^
+- Add configuration attribute in pydeck. Fix css_background_color (#7255)
+
+0.8.0b2 - Sep 08 2022
+^^^^^^^^^^^^^^^^^^^^^
+- Add styling functions in pydeck (#7249)
+
+0.8.0b1 - Aug 25 2022
+^^^^^^^^^^^^^^^^^^^^^
+- Update jupyter-widget to work with JupyterLab 3 (#7026)
+- Make Jupyter widget into a Python extra / optional module (#7125)
+
+0.7 Releases
+------------
+
+0.7.1 - Oct 25 2021
+^^^^^^^^^^^^^^^^^^^
+- Add support for experimental props and add ScenegraphLayer example (#6308)
+- Enable custom_map_style and file encoding for HTML on Windows (#6121)
+
+0.7.0 - Aug 27 2021
+^^^^^^^^^^^^^^^^^^^
+- Lock to @deck.gl/jupyter-widget@~8.5.* (#6141)
 
 0.6 Releases
 ------------
 
 0.6.2 - Apr 12 2021
-------------------
+^^^^^^^^^^^^^^^^^^^
 - Fix bug that prevents pydeck from rendering in Colab (#5655)
 - Add ``_repr_html_`` for automatic Jupyter rendering (#5486)
 
 0.6.1 - Feb 12 2021
-------------------
+^^^^^^^^^^^^^^^^^^^
 - Fix API keys bug where pydeck fails to use API keys passed
   as parameters to a Deck object (#5475)
 
 0.6.0 - Feb 7 2021
-------------------
+^^^^^^^^^^^^^^^^^^
 - Lock to @deck.gl/jupyter-widget@~8.4.*
 - Improve support for multiple map providders; make Carto default base map provider (#5131)
 - Improve local image file loading experience for BitmapLayer and TileLayer (#5269)

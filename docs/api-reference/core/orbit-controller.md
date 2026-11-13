@@ -1,10 +1,10 @@
 # OrbitController
 
-Inherits from [Base Controller](/docs/api-reference/core/controller.md).
+Inherits from [Base Controller](./controller.md).
 
-The `OrbitController` class can be passed to either the `Deck` class's [controller](/docs/api-reference/core/deck.md#controller) prop or a `View` class's [controller](/docs/api-reference/core/view.md#controller) prop to specify that viewport interaction should be enabled.
+The `OrbitController` class can be passed to either the `Deck` class's [controller](./deck.md#controller) prop or a `View` class's [controller](./view.md#controller) prop to specify that viewport interaction should be enabled.
 
-`OrbitController` is the default controller for [OrbitView](/docs/api-reference/core/orbit-view.md).
+`OrbitController` is the default controller for [OrbitView](./orbit-view.md).
 
 ## Usage
 
@@ -35,10 +35,12 @@ new Deck({
 
 ## Options
 
-Supports all [Controller options](/docs/api-reference/core/controller.md#options) with the following default behavior:
+Supports all [Controller options](./controller.md#options) with the following default behavior:
 
 - `dragMode`: default `'rotate'` (drag to rotate, shift/ctrl + drag to pan)
 - `keyboard`: arrow keys to pan, arrow keys with shift/ctrl down to rotate, +/- to zoom
+- `maxBounds` - constrains the target position within the specified bounding box `[[minX, minY, minZ], [maxX, maxY, maxZ]]`
+- `maxBoundsPadding` - padding inside the viewport when fitting `maxBounds`, using the same `{left, right, top, bottom}` format as view padding. Numeric values are pixels; strings may be percentages or layout expressions such as `calc(10% - 4px)`. The bounds sphere is fitted within the space around the projected `target`. Default `0`.
 
 ## Custom OrbitController
 
@@ -65,9 +67,9 @@ new Deck({
 })
 ```
 
-See the `Controller` class [documentation](/docs/api-reference/core/controller.md#methods) for the methods that you can use and/or override.
+See the `Controller` class [documentation](./controller.md#methods) for the methods that you can use and/or override.
 
 
 ## Source
 
-[modules/core/src/controllers/orbit-controller.js](https://github.com/visgl/deck.gl/blob/master/modules/core/src/controllers/orbit-controller.js)
+[modules/core/src/controllers/orbit-controller.ts](https://github.com/visgl/deck.gl/blob/master/modules/core/src/controllers/orbit-controller.ts)

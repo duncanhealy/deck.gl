@@ -14,7 +14,7 @@
   "views": [
     {
       "@@type": "MapView",
-      "mapStyle": "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json",
+      "mapStyle": "https://tiles.openfreemap.org/styles/positron",
       "controller": true
     }
   ],
@@ -25,6 +25,14 @@
       "loader": "@@#Tiles3DLoader",
       "getPointColor": [0, 125, 200, 255],
       "data": "https://raw.githubusercontent.com/visgl/deck.gl-data/master/3d-tiles/RoyalExhibitionBuilding/tileset.json"
+    }
+  ],
+  "widgets": [
+    {
+      "@@type": "ZoomWidget"
+    },
+    {
+      "@@type": "CompassWidget"
     }
   ]
 }

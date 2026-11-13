@@ -1,20 +1,18 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 // This layer allows any deck.gl app to support user-defined JSON layers
 import {CompositeLayer} from '@deck.gl/core';
 import {JSONConverter, JSONConfiguration} from '@deck.gl/json';
 
-import {
-  MapView,
-  FirstPersonView,
-  OrbitView,
-  OrthographicView,
-  COORDINATE_SYSTEM
-} from '@deck.gl/core';
+import {MapView, FirstPersonView, OrbitView, OrthographicView} from '@deck.gl/core';
 import * as layers from '@deck.gl/layers';
-import GL from '@luma.gl/constants';
+import {GL} from '@luma.gl/core/webgl-constants';
 
 const DEFAULT_CONFIGURATION = {
   classes: Object.assign({MapView, FirstPersonView, OrbitView, OrthographicView}, layers),
-  enumerations: {COORDINATE_SYSTEM, GL}
+  enumerations: {GL}
 };
 
 const defaultProps = {
@@ -25,9 +23,11 @@ const defaultProps = {
 
 export default class JSONLayer extends CompositeLayer {
   initializeState() {
+    const configuration = new JSONConfiguration(DEFAULT_CONFIGURATION);
+    configuration.merge(this.props.configuration);
     this.state = {
       jsonConverter: new JSONConverter({
-        configuration: new JSONConfiguration(DEFAULT_CONFIGURATION, this.props.configuration)
+        configuration
       }),
       layers: []
     };

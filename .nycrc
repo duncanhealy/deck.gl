@@ -3,9 +3,11 @@
   "sourceMap": false,
   "instrument": true,
   "include": [
-    "modules/**/src/**/*.js"
+    "modules/**/src/**/*.js",
+    "modules/**/src/**/*.ts"
   ],
   "exclude": [
-    "modules/test-utils/"
+    "modules/test-utils/",
+    "modules/**/types.ts"
   ]
 }

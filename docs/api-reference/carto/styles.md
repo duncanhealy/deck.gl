@@ -2,18 +2,19 @@
 
 Helper functions to create data-driven map visualizations.
 
-Take the advantage of [CARTOColors](https://carto.com/carto-colors/), custom color schemes built on top of well-known standards for color use on maps, with next generation enhancements for the web and CARTO basemaps.
+These helpers take advantage of [CARTOColors](https://carto.com/carto-colors/), custom color schemes built on top of well-known standards for color use on maps, with next generation enhancements for the web and CARTO basemaps.
 
 ## colorBins
 
-Helper function for quickly creating a color bins style.
+Helper function for quickly creating a color bins style based on [d3 scaleThreshold](https://github.com/d3/d3-scale/blob/main/README.md#scaleThreshold).
 
 Data values of each attribute are rounded down to the nearest value in the domain and are then styled with the corresponding color.
 
 ```javascript
-new CartoSQLLayer({
+new CartoLayer({
+  type: MAP_TYPES.QUERY,
   data: 'SELECT the_geom_webmercator, gn_pop FROM populated_places',
-  getFillColor:  colorBins({
+  getFillColor: colorBins({
     attr: 'gn_pop',
     domain: [1e5, 2e5, 3e5],
     colors: 'Teal'
@@ -21,17 +22,26 @@ new CartoSQLLayer({
 });
 ```
 
+In this example, using `Teal` of length `domain.length + 1`, the range/color equivalence is:
+
+```
+[, 1e5)     -> Teal[0]
+[1e5, 2e5)  -> Teal[1]
+[2e5, 3e5)  -> Teal[2]
+[3e5,]      -> Teal[3]
+```
+
 ### Arguments
 
-#### `attr` (String) 
+#### `attr` (string) {#attr}
 
 Attribute or column to symbolize by.
 
-#### `domain` (Array) 
+#### `domain` (number[]) {#domain}
 
 Assign manual class break values.
 
-#### `colors` (String | Array, optional)
+#### `colors` (string | Color[], optional) {#colors}
 
 Color assigned to each domain value.
 
@@ -40,7 +50,7 @@ Color assigned to each domain value.
 
 Default: `PurpOr`
 
-#### `nullColor` (Array, optional)
+#### `nullColor` (number[3], optional) {#nullcolor}
 
 Color for null values.
 
@@ -53,7 +63,8 @@ Helper function for quickly creating a color category style.
 Data values of each attribute listed in the domain are mapped one to one with corresponding colors in the range.
 
 ```javascript
-new CartoSQLLayer({
+new CartoLayer({
+  type: MAP_TYPES.QUERY,
   data: 'SELECT the_geom_webmercator, type FROM ne_10m_airports',
   getFillColor: colorCategories({
     attr: 'type',
@@ -65,15 +76,15 @@ new CartoSQLLayer({
 
 ### Arguments
 
-#### `attr` (String) 
+#### `attr` (string) {#attr}
 
 Attribute or column to symbolize by.
 
-#### `domain` (Array) 
+#### `domain` (string[]) {#domain}
 
 Category list. Must be a valid list of categories.
 
-#### `colors` (String | Array, optional)
+#### `colors` (string | Color[], optional) {#colors}
 
 Color assigned to each domain value.
 
@@ -82,13 +93,13 @@ Color assigned to each domain value.
 
 Default: `PurpOr`
 
-#### `nullColor` (Array, optional)
+#### `nullColor` (number[3], optional) {#nullcolor}
 
 Color for null values.
 
 Default: `[204, 204, 204]`
 
-#### `othersColor` (Array, optional)
+#### `othersColor` (number[3], optional) {#otherscolor}
 
 Fallback color for a category not correctly assigned.
 
@@ -101,7 +112,8 @@ Helper function for quickly creating a color continuous style.
 Data values of each field are interpolated linearly across values in the domain and are then styled with a blend of the corresponding color in the range.
 
 ```javascript
-new CartoSQLLayer({
+new CartoLayer({
+  type: MAP_TYPES.QUERY,
   data: 'SELECT the_geom_webmercator, gn_pop FROM populated_places',
   getFillColor: colorContinuous({
     attr: 'gn_pop',
@@ -113,15 +125,15 @@ new CartoSQLLayer({
 
 ### Arguments
 
-#### `attr` (String) 
+#### `attr` (string) {#attr}
 
 Attribute or column to symbolize by.
 
-#### `domain` (Array) 
+#### `domain` (number[]) {#domain}
 
 Attribute domain to define the data range.
 
-#### `colors` (String | Array, optional)
+#### `colors` (string | Color[], optional) {#colors}
 
 Color assigned to each domain value.
 
@@ -130,7 +142,7 @@ Color assigned to each domain value.
 
 Default: `PurpOr`
 
-#### `nullColor` (Array, optional)
+#### `nullColor` (number[3], optional) {#nullcolor}
 
 Color for null values.
 

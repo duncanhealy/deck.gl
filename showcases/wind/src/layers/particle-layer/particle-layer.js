@@ -1,6 +1,10 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 /* global window */
 import {Layer} from 'deck.gl';
-import GL from '@luma.gl/constants';
+import {GL} from '@luma.gl/core/webgl-constants';
 import {Model, Geometry, Buffer, setParameters, loadTextures, Texture2D} from 'luma.gl';
 import {Transform} from 'luma.gl';
 

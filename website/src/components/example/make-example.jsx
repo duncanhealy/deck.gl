@@ -1,0 +1,212 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  Children,
+  isValidElement,
+  cloneElement
+} from 'react';
+import styled from 'styled-components';
+import InfoPanel from '../info-panel';
+import {loadData, joinPath} from '../../utils/data-utils';
+import {normalizeParam} from '../../utils/format-utils';
+import {cloneMapStyle, MAPBOX_STYLES} from '../../constants/defaults';
+import useBaseUrl from '@docusaurus/useBaseUrl';
+import {DeviceTabs} from '../device-tabs';
+import {useStore} from '../../store/device-store';
+
+// Stacks the device tabs above the demo, so the demo fills the remaining height
+const ExampleLayout = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
+
+const DemoContainer = styled.div`
+  flex: 1;
+  min-height: 0;
+  position: relative;
+
+  .tooltip,
+  .deck-tooltip {
+    position: absolute;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--ifm-color-white);
+    overflow: hidden;
+    overflow-wrap: break-word;
+    max-width: 300px;
+    font-size: 12px;
+    z-index: 9;
+    pointer-events: none;
+  }
+`;
+
+const MapTip = styled.div`
+  position: absolute;
+  right: 12px;
+  bottom: 20px;
+  color: var(--ifm-color-white);
+  mix-blend-mode: difference;
+  font-size: 14px;
+
+  @media screen and (max-width: 480px) {
+    display: none;
+  }
+`;
+
+// The website caches one device per backend, and each device owns a canvas that is reused across
+// examples. Remember the website-owned canvas style so switching away and back does not reveal the
+// previous example's last frame or leave a reused canvas permanently hidden.
+const originalCanvasVisibility = new WeakMap();
+
+function useSharedDeviceCanvas(device) {
+  useEffect(() => {
+    const canvas = device?.getDefaultCanvasContext().canvas;
+    if (!(canvas instanceof HTMLCanvasElement)) {
+      return;
+    }
+
+    if (!originalCanvasVisibility.has(canvas)) {
+      originalCanvasVisibility.set(canvas, canvas.style.visibility);
+    }
+    canvas.style.visibility = 'hidden';
+
+    // DeckGL mounts the device's existing canvas and schedules its first draw in a child effect.
+    // Reveal it on the next frame, after that setup, so a cached frame from another example cannot
+    // flash while the canvas is moved into the new wrapper.
+    const animationFrame = requestAnimationFrame(() => {
+      canvas.style.visibility = originalCanvasVisibility.get(canvas) ?? '';
+    });
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+      canvas.style.visibility = 'hidden';
+    };
+  }, [device]);
+}
+
+export default function makeExample(DemoComponent, {isInteractive = true, style} = {}) {
+  const {parameters = {}, mapStyle} = DemoComponent;
+  const defaultParams = Object.keys(parameters).reduce((acc, name) => {
+    acc[name] = normalizeParam(parameters[name]);
+    return acc;
+  }, {});
+
+  const defaultData = Array.isArray(DemoComponent.data) ? DemoComponent.data.map(_ => null) : null;
+
+  return function () {
+    const [data, setData] = useState(defaultData);
+    const [params, setParams] = useState(defaultParams);
+    const [meta, setMeta] = useState({});
+    // Only demos that expose device tabs receive the shared device. Unsupported examples keep
+    // their existing, independently initialized WebGL path.
+    const device = useStore(state => (DemoComponent.hasDeviceTabs ? state.device : undefined));
+    const baseUrl = useBaseUrl('/');
+    const clonedMapStyle = useMemo(
+      () => cloneMapStyle(mapStyle || MAPBOX_STYLES.BLANK),
+      [mapStyle]
+    );
+    useSharedDeviceCanvas(device);
+
+    const useParam = useCallback(newParameters => {
+      const newParams = Object.keys(newParameters).reduce((acc, name) => {
+        acc[name] = normalizeParam(newParameters[name]);
+        return acc;
+      }, {});
+      setParams(p => ({...p, ...newParams}));
+    }, []);
+
+    const updateMeta = useCallback(newMeta => {
+      setMeta(m => ({...m, ...newMeta}));
+    }, []);
+
+    useEffect(() => {
+      let source = DemoComponent.data;
+      if (!source) {
+        return;
+      }
+
+      const isArray = Array.isArray(source);
+
+      if (!isArray) {
+        source = [source];
+      }
+
+      for (let index = 0; index < source.length; index++) {
+        const {url, worker} = source[index];
+        loadData(
+          joinPath(baseUrl, url),
+          worker && joinPath(baseUrl, worker),
+          (resultData, resultMeta) => {
+            if (isArray) {
+              setData(d => {
+                const newData = d.slice();
+                newData[index] = resultData;
+                return newData;
+              });
+            } else {
+              setData(resultData);
+            }
+            if (resultMeta) {
+              setMeta(m => ({...m, ...resultMeta}));
+            }
+          }
+        );
+      }
+    }, []);
+
+    const updateParam = (name, value) => {
+      const p = params[name];
+      if (p) {
+        setParams({
+          ...params,
+          [name]: normalizeParam({...p, value})
+        });
+      }
+    };
+
+    return (
+      <ExampleLayout>
+        {DemoComponent.hasDeviceTabs && <DeviceTabs />}
+        <DemoContainer style={style}>
+          {/*
+            Device creation is asynchronous. Unmount the current demo while a switch is pending;
+            otherwise two Deck instances can temporarily try to render into the same canvas.
+            The device key makes a completed switch create a fresh DeckGL lifecycle instead of
+            replacing a GPU backend inside an already initialized Deck.
+          */}
+          {(!DemoComponent.hasDeviceTabs || device) && (
+            <DemoComponent
+              key={device?.id}
+              device={device}
+              data={data}
+              mapStyle={clonedMapStyle}
+              params={params}
+              useParam={useParam}
+              onStateChange={updateMeta}
+            />
+          )}
+          {isInteractive && (
+            <InfoPanel
+              title={DemoComponent.title}
+              params={params}
+              meta={meta}
+              updateParam={updateParam}
+              sourceLink={DemoComponent.code}
+            >
+              {DemoComponent.renderInfo(meta)}
+            </InfoPanel>
+          )}
+
+          {isInteractive && mapStyle && <MapTip>Hold down shift to rotate</MapTip>}
+        </DemoContainer>
+      </ExampleLayout>
+    );
+  };
+}

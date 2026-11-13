@@ -1,0 +1,261 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect, vi} from 'vitest';
+import {testLayer, generateLayerTests} from '@deck.gl/test-utils/vitest';
+import {LayerManager, MapView} from '@deck.gl/core';
+import {HexagonLayer, WebGLAggregator, CPUAggregator} from '@deck.gl/aggregation-layers';
+import {getWebGPUTestDevice} from '@luma.gl/core/test-utils';
+import * as FIXTURES from 'deck.gl-test/data';
+import {device} from '@deck.gl/test-utils/vitest';
+
+const SAMPLE_PROPS = {
+  data: FIXTURES.points.slice(0, 3),
+  getPosition: d => d.COORDINATES
+  // gpuAggregation: false
+};
+
+test('HexagonLayer#WebGPU renders with automatic CPU aggregation', async ({skip}) => {
+  const webgpuDevice = await getWebGPUTestDevice();
+
+  if (!webgpuDevice) {
+    skip();
+    return;
+  }
+
+  const viewport = new MapView().makeViewport({
+    width: 100,
+    height: 100,
+    viewState: {longitude: -122, latitude: 38, zoom: 10}
+  });
+  const errors: Error[] = [];
+  const layerManager = new LayerManager(webgpuDevice, {viewport});
+  layerManager.setProps({onError: error => errors.push(error)});
+
+  const layer = new HexagonLayer({
+    id: 'webgpu-hexagons',
+    ...SAMPLE_PROPS,
+    gpuAggregation: true,
+    radius: 1000,
+    extruded: true
+  });
+
+  webgpuDevice.handle.pushErrorScope('validation');
+  layerManager.setLayers([layer]);
+
+  expect(errors).toEqual([]);
+  expect(layer.state.aggregator).toBeInstanceOf(CPUAggregator);
+  expect(
+    layerManager
+      .getLayers()
+      .some(
+        renderedLayer =>
+          renderedLayer.id.startsWith('webgpu-hexagons') && renderedLayer.getModels().length > 0
+      )
+  ).toBe(true);
+
+  await webgpuDevice.handle.queue.onSubmittedWorkDone();
+  expect(await webgpuDevice.handle.popErrorScope()).toBeNull();
+
+  layerManager.finalize();
+});
+
+test('HexagonLayer', () => {
+  const testCases = generateLayerTests({
+    Layer: HexagonLayer,
+    sampleProps: SAMPLE_PROPS,
+    assert: (cond, msg) => expect(cond, msg).toBeTruthy(),
+    onBeforeUpdate: ({testCase}) => console.log(testCase.title),
+    onAfterUpdate({layer}) {
+      expect(layer.state.aggregator, 'should have aggregator').toBeTruthy();
+    }
+  });
+
+  testLayer({Layer: HexagonLayer, testCases, onError: err => expect(err).toBeFalsy()});
+});
+
+test('HexagonLayer#getAggregatorType', () => {
+  if (!WebGLAggregator.isSupported(device)) {
+    console.log('GPU aggregation not supported, skipping');
+    return;
+  }
+  testLayer({
+    Layer: HexagonLayer,
+    onError: err => expect(err).toBeFalsy(),
+    testCases: [
+      {
+        title: 'Default',
+        props: SAMPLE_PROPS,
+        onAfterUpdate({layer}) {
+          expect(
+            layer.state.aggregator instanceof WebGLAggregator,
+            'By default should use GPU Aggregation'
+          ).toBeTruthy();
+        }
+      },
+      {
+        title: 'Disable gpuAggregation',
+        updateProps: {
+          gpuAggregation: false
+        },
+        onAfterUpdate({layer}) {
+          expect(
+            layer.state.aggregator instanceof CPUAggregator,
+            'Should use CPU Aggregation (gpuAggregation: false)'
+          ).toBeTruthy();
+        }
+      },
+      {
+        title: 'Enable gpuAggregation',
+        updateProps: {
+          gpuAggregation: true
+        },
+        onAfterUpdate({layer}) {
+          expect(
+            layer.state.aggregator instanceof WebGLAggregator,
+            'Should use GPU Aggregation (gpuAggregation: true)'
+          ).toBeTruthy();
+        }
+      },
+      {
+        title: 'fallback to CPU aggregation',
+        updateProps: {
+          getColorValue: points => points.length
+        },
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(
+            layer.state.aggregator instanceof CPUAggregator,
+            'Should use CPU Aggregation (getColorValue)'
+          ).toBeTruthy();
+        }
+      },
+      {
+        title: 'fallback to CPU aggregation',
+        updateProps: {
+          getElevationValue: points => points.length
+        },
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(
+            layer.state.aggregator instanceof CPUAggregator,
+            'Should use CPU Aggregation (getElevationValue)'
+          ).toBeTruthy();
+        }
+      }
+    ]
+  });
+});
+
+test('HexagonLayer#non-iterable data', () => {
+  const dataNonIterable = {
+    length: 3,
+    positions: FIXTURES.points.slice(0, 3).flatMap(d => d.COORDINATES),
+    weights: FIXTURES.points.slice(0, 3).map(d => d.SPACES)
+  } as const;
+
+  testLayer({
+    Layer: HexagonLayer,
+    onError: err => expect(err).toBeFalsy(),
+    testCases: [
+      {
+        title: 'Non-iterable data with constant weights',
+        props: {
+          data: dataNonIterable,
+          cellSize: 400,
+          getPosition: (_, {index}) => [
+            dataNonIterable.positions[index * 2],
+            dataNonIterable.positions[index * 2 + 1]
+          ],
+          getColorWeight: 1,
+          getElevationWeight: 1
+        },
+        onAfterUpdate: ({subLayer}) => {
+          console.log('Layer updated with constant get*Weight accessors');
+        }
+      },
+      {
+        title: 'Non-iterable data with accessors',
+        updateProps: {
+          getColorWeight: (_, {index, data}) => {
+            expect(
+              Number.isFinite(index) && data,
+              'point index and context are populated'
+            ).toBeTruthy();
+            return (data as any).weights[index * 2];
+          },
+          getElevationWeight: (_, {index, data}) => {
+            expect(
+              Number.isFinite(index) && data,
+              'point index and context are populated'
+            ).toBeTruthy();
+            return (data as any).weights[index * 2];
+          },
+          updateTriggers: {
+            getColorWeight: 1,
+            getElevationWeight: 1
+          }
+        },
+        onAfterUpdate: ({subLayer}) => {
+          console.log('Layer updated with get*Weight accessors and non-iterable data');
+        }
+      },
+      {
+        title: 'Non-iterable data with custom aggregation',
+        updateProps: {
+          getColorValue: (points, {indices, data: {weights}}) => {
+            expect(indices && weights, 'context is populated').toBeTruthy();
+            return points.length;
+          },
+          getElevationValue: (points, {indices, data: {weights}}) => {
+            expect(indices && weights, 'context is populated').toBeTruthy();
+            return points.length;
+          },
+          updateTriggers: {
+            getColorValue: 1,
+            getElevationValue: 1
+          }
+        },
+        onAfterUpdate: ({subLayer}) => {
+          console.log('Layer updated with get*Value accessors and non-iterable data');
+        }
+      }
+    ]
+  });
+});
+
+test('Hexagon picking retains bin metadata when inverse projection fails', () => {
+  const viewport = new MapView().makeViewport({
+    width: 100,
+    height: 100,
+    viewState: {longitude: 0, latitude: 0, zoom: 1}
+  })!;
+  const layer = new HexagonLayer({id: 'failed-inverse-picking'});
+  const manager = new LayerManager(device, {viewport});
+  try {
+    manager.setLayers([layer]);
+    vi.spyOn(layer.state.aggregator, 'getBin').mockReturnValue({
+      id: [0, 0],
+      value: [1, 2],
+      count: 3
+    });
+    layer.state.unpreproject = () => {
+      throw new Error('Outside inverse domain');
+    };
+    const result = layer.getPickingInfo({
+      info: {index: 0, coordinate: [0, 0]} as any,
+      mode: 'hover',
+      sourceLayer: null
+    });
+    expect(result.coordinate).toBeNull();
+    expect(result.object).toMatchObject({
+      position: null,
+      col: 0,
+      row: 0,
+      colorValue: 1,
+      elevationValue: 2,
+      count: 3
+    });
+  } finally {
+    manager.finalize();
+  }
+});

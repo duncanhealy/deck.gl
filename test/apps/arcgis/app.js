@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import {loadArcGISModules} from '@deck.gl/arcgis';
 import {TripsLayer} from '@deck.gl/geo-layers';
 
@@ -22,13 +26,11 @@ function renderLayers() {
   ];
 }
 
-loadArcGISModules([
-  'esri/Map',
-  'esri/views/MapView',
-  'esri/views/SceneView',
-  'esri/views/3d/externalRenderers'
-]).then(({DeckLayer, DeckRenderer, modules}) => {
-  const [ArcGISMap, MapView, SceneView, externalRenderers] = modules;
+loadArcGISModules(
+  ['esri/Map', 'esri/views/MapView', 'esri/views/SceneView', 'esri/views/3d/webgl/RenderNode'],
+  {url: 'https://js.arcgis.com/4.32/'}
+).then(({DeckLayer, DeckRenderer, modules}) => {
+  const [ArcGISMap, MapView, SceneView, RenderNode] = modules;
 
   const layer = new DeckLayer({});
 
@@ -66,9 +68,7 @@ loadArcGISModules([
     viewingMode: 'local'
   });
 
-  const renderer = new DeckRenderer(sceneView, {});
-
-  externalRenderers.add(sceneView, renderer);
+  const renderer = new DeckRenderer({view: sceneView});
 
   /* global setInterval */
   setInterval(() => {

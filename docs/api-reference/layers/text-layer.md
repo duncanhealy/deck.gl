@@ -1,45 +1,129 @@
-import {TextLayerDemo} from 'website-components/doc-demos/layers';
+# TextLayer
+
+import {TextLayerDemo} from '@site/src/doc-demos/layers';
 
 <TextLayerDemo />
 
-# TextLayer
+The `TextLayer` renders text labels at given coordinates.
 
-The text layer renders text labels on the map using texture mapping. This Layer is extended based on [Icon Layer](/docs/api-reference/layers/icon-layer.md) and wrapped using [Composite Layer](/docs/api-reference/core/composite-layer.md).
+TextLayer is a [CompositeLayer](../core/composite-layer.md) that wraps around the [IconLayer](./icon-layer.md). It automatically creates an atlas texture from the specified font settings and `characterSet`.
 
-Auto pack required `characterSet` into a shared texture `fontAtlas`.
 
-TextLayer is a [CompositeLayer](/docs/api-reference/core/composite-layer.md).
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
+<Tabs groupId="language">
+  <TabItem value="js" label="JavaScript">
 
 ```js
-import DeckGL from '@deck.gl/react';
+import {Deck} from '@deck.gl/core';
 import {TextLayer} from '@deck.gl/layers';
 
-function App({data, viewState}) {  /**
-   * Data format:
-   * [
-   *   {name: 'Colma (COLM)', address: '365 D Street, Colma CA 94014', coordinates: [-122.466233, 37.684638]},
-   *   ...
-   * ]
-   */
+const layer = new TextLayer({
+  id: 'TextLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
 
-  const layer = new TextLayer({
-    id: 'text-layer',
-    data,
-    pickable: true,
-    getPosition: d => d.coordinates,
-    getText: d => d.name,
-    getSize: 32,
-    getAngle: 0,
+  getPosition: d => d.coordinates,
+  getText: d => d.name,
+  getAlignmentBaseline: 'center',
+  getColor: [255, 128, 0],
+  getSize: 16,
+  getTextAnchor: 'middle',
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck, PickingInfo} from '@deck.gl/core';
+import {TextLayer} from '@deck.gl/layers';
+
+type BartStation = {
+  name: string;
+  coordinates: [longitude: number, latitude: number];
+};
+
+const layer = new TextLayer<BartStation>({
+  id: 'TextLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+
+  getPosition: (d: BartStation) => d.coordinates,
+  getText: (d: BartStation) => d.name,
+  getAlignmentBaseline: 'center',
+  getColor: [255, 128, 0],
+  getSize: 16,
+  getTextAnchor: 'middle',
+  pickable: true
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}: PickingInfo<BartStation>) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {} from '@deck.gl/layers';
+import type {PickingInfo} from '@deck.gl/core';
+
+type BartStation = {
+  name: string;
+  coordinates: [longitude: number, latitude: number];
+};
+
+function App() {
+  const layer = new TextLayer<BartStation>({
+    id: 'TextLayer',
+    data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+
+    getPosition: (d: BartStation) => d.coordinates,
+    getText: (d: BartStation) => d.name,
+    getAlignmentBaseline: 'center',
+    getColor: [255, 128, 0],
+    getSize: 16,
     getTextAnchor: 'middle',
-    getAlignmentBaseline: 'center'
+    pickable: true
   });
 
-  return <DeckGL viewState={viewState}
+  return <DeckGL
+    initialViewState={{
+      longitude: -122.4,
+      latitude: 37.74,
+      zoom: 11
+    }}
+    controller
+    getTooltip={({object}: PickingInfo<BartStation>) => object && object.name}
     layers={[layer]}
-    getTooltip={({object}) => object && `${object.name}\n${object.address}`} />;
+  />;
 }
 ```
+
+  </TabItem>
+</Tabs>
 
 
 ## Installation
@@ -52,18 +136,20 @@ npm install deck.gl
 npm install @deck.gl/core @deck.gl/layers
 ```
 
-```js
+```ts
 import {TextLayer} from '@deck.gl/layers';
-new TextLayer({});
+import type {TextLayerProps} from '@deck.gl/layers';
+
+new TextLayer<DataT>(...props: TextLayerProps<DataT>[]);
 ```
 
 To use pre-bundled scripts:
 
 ```html
-<script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^8.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/layers@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@^9.0.0/dist.min.js"></script>
 ```
 
 ```js
@@ -72,106 +158,198 @@ new deck.TextLayer({});
 
 ## Properties
 
-Inherits from all [Base Layer](/docs/api-reference/core/layer.md) and [CompositeLayer](/docs/api-reference/core/composite-layer.md) properties.
+Inherits from all [Base Layer](../core/layer.md) and [CompositeLayer](../core/composite-layer.md) properties.
 
 ### Rendering Options
 
-##### `sizeScale` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `sizeScale` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#sizescale}
 
 * Default: 1
 
 Text size multiplier.
 
-##### `sizeUnits` (String, optional)
+#### `sizeUnits` (string, optional) {#sizeunits}
 
 * Default: `pixels`
 
-The units of the size specified by `getSize`, one of `'meters'`, `'pixels'`. When zooming in and out, meter sizes scale with the base map, and pixel sizes remain the same on screen.
+The units of the size, one of `'meters'`, `'common'`, and `'pixels'`. See [unit system](../../developer-guide/coordinate-systems.md#supported-units).
 
-##### `sizeMinPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `sizeMinPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#sizeminpixels}
 
 * Default: `0`
 
-The minimum size in pixels.
+The minimum size in pixels. When using non-pixel `sizeUnits`, this prop can be used to prevent the icon from getting too small when zoomed out.
 
-##### `sizeMaxPixels` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `sizeMaxPixels` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#sizemaxpixels}
 
 * Default: `Number.MAX_SAFE_INTEGER`
 
-The maximum size in pixels.
+The maximum size in pixels. When using non-pixel `sizeUnits`, this prop can be used to prevent the icon from getting too big when zoomed in.
 
-##### `billboard` (Boolean, optional)
+#### `billboard` (boolean, optional) {#billboard}
 
 - Default: `true`
 
-If on, the text always faces camera. Otherwise the text faces up (z).
+If `true`, the text always faces camera. Otherwise the text faces up (z).
 
-##### `background` (Boolean, optional)
+#### `background` (boolean, optional) {#background}
 
 - Default `false`
 
 Whether to render background for the text blocks.
 
-##### `backgroundPadding` (Array, optional)
+If a valid content box is defined by [getContentBox](#getcontentbox), the background will fill this box. Otherwise, background is generated around the natural bounding box of the text.
 
-- Default `[0, 0]`
+#### `backgroundBorderRadius` (number | number[4], optional) {#backgroundborderradius}
 
-The padding of the background, `[padding_x, padding_y]` in pixels.
+- Default `0`
 
-##### `fontFamily` (String, optional)
+The border-radius of the background, a number or an array of 4 numbers.
+
++ If a number is supplied, it is the same border radius in pixel for all corners.
++ If an array of 4 is supplied, it is interpreted as `[bottom_right_corner, top_right_corner, bottom_left_corner, top_left_corner]` border radius in pixel.
+
+
+#### `backgroundPadding` (number[4], optional) {#backgroundpadding}
+
+- Default `[0, 0, 0, 0]`
+
+The padding of the background, an array of either 2 or 4 numbers.
+
++ If an array of 2 is supplied, it is interpreted as `[padding_x, padding_y]` in pixels.
++ If an array of 4 is supplied, it is interpreted as `[padding_left, padding_top, padding_right, padding_bottom]` in pixels.
+
+#### `fontFamily` (string, optional) {#fontfamily}
 
 * Default: `'Monaco, monospace'`
 
 Specifies a prioritized list of one or more font family names and/or generic family names. Follow the specs for CSS [font-family](https://developer.mozilla.org/en-US/docs/Web/CSS/font-family).
 
-##### `characterSet` (Array | String, optional)
+See the [remarks](#remarks) section below for tips on using web fonts.
 
-Specifies a list of characters to include in the font. By default, only characters in the Ascii code range 32-128 are included. Use this prop if you need to display special characters.
+#### `characterSet` (string[] | Set&lt;string&gt; | string, optional) {#characterset}
 
-##### `fontWeight` (Number | String, optional)
+* Default: ASCII characters 32-128
+
+Specifies a list of characters to include in the font.
+
+- If set to `'auto'`, automatically detects the characters used in the data. This option has a performance overhead and may cause the layer to take longer to load if the data is very large.
+- If set to an array or set of characters, the generated font will be limited to these characters. If you already know all the characters that are needed (e.g. numbers, latin alphabet), using this option provides better performance. If a character outside of the specified range is referenced by `getText`, a warning will be logged to the JavaScript console.
+
+Note that there is a limit to the number of unique characters supported by a single layer. The maximum number subjects to `fontSettings.fontSize` and the [MAX_TEXTURE_SIZE](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/WebGL_best_practices#understand_system_limits) of the device/browser.
+
+#### `fontWeight` (number | string, optional) {#fontweight}
 
 * Default: `normal`.
 
 css `font-weight`.
 
-##### `lineHeight` (Number, optional)
+#### `lineHeight` (number, optional) {#lineheight}
 
-* Default: 1.0.
+* Default: `1.0`.
 
-A unitless number that will be multiplied with the current font-size to set the line height.
+A unitless number that will be multiplied with the current font size to set the line height.
 
-##### `fontSettings` (Object, optional)
+#### `fontSettings` (object, optional) {#fontsettings}
 
 Advance options for fine tuning the appearance and performance of the generated shared `fontAtlas`.
 
 Options:
 
-* `fontSize` (Number): Font size in pixels. Default is `64`. This option is only applied for generating `fontAtlas`, it does not impact the size of displayed text labels. Larger `fontSize` will give you a sharper look when rendering text labels with very large font sizes. But larger `fontSize` requires more time and space to generate the `fontAtlas`.
-* `buffer` (Number): Whitespace buffer around each side of the character. Default is `4`. In general, bigger `fontSize` requires bigger `buffer`. Increase `buffer` will add more space between each character when layout `characterSet` in `fontAtlas`. This option could be tuned to provide sufficient space for drawing each character and avoiding overlapping of neighboring characters.
-* `sdf` (Boolean): Flag to enable / disable `sdf`. Default is `false`. [`sdf` (Signed Distance Fields)](http://cs.brown.edu/people/pfelzens/papers/dt-final.pdf) will provide a sharper look when rendering with very large or small font sizes. `TextLayer` integrates with [`TinySDF`](https://github.com/mapbox/tiny-sdf) which implements the `sdf` algorithm.
-* `radius` (Number): How many pixels around the glyph shape to use for encoding distance. Default is `12`. Bigger radius yields higher quality outcome. Only applies when `sdf: true`.
-* `cutoff` (Number): How much of the radius (relative) is used for the inside part the glyph. Default is `0.25`. Bigger `cutoff` makes character thinner. Smaller `cutoff` makes character look thicker. Only applies when `sdf: true`.
-* `smoothing` (Number): How much smoothing to apply to the text edges. Default `0.1`. Only applies when `sdf: true`.
+* `fontSize` (number): Font size in pixels. Default is `64`. This option is only applied for generating `fontAtlas`, it does not impact the size of displayed text labels. Larger `fontSize` will give you a sharper look when rendering text labels with very large font sizes. But larger `fontSize` requires more time and space to generate the `fontAtlas`.
+* `buffer` (number): Whitespace buffer around each side of the character. Default is `4`. In general, bigger `fontSize` requires bigger `buffer`. Increase `buffer` will add more space between each character when layout `characterSet` in `fontAtlas`. This option could be tuned to provide sufficient space for drawing each character and avoiding overlapping of neighboring characters.
+* `sdf` (boolean): Flag to enable / disable `sdf`. Default is `false`. [`sdf` (Signed Distance Fields)](http://cs.brown.edu/people/pfelzens/papers/dt-final.pdf) will provide a sharper look when rendering with very large or small font sizes. `TextLayer` integrates with [`TinySDF`](https://github.com/mapbox/tiny-sdf) which implements the `sdf` algorithm.
+* `radius` (number): How many pixels around the glyph shape to use for encoding distance. Default is `12`. Bigger radius yields higher quality outcome. Only applies when `sdf: true`.
+* `cutoff` (number): How much of the radius (relative) is used for the inside part the glyph. Default is `0.25`. Bigger `cutoff` makes character thinner. Smaller `cutoff` makes character look thicker. Only applies when `sdf: true`.
+* `smoothing` (number): How much smoothing to apply to the text edges. Default `0.1`. Only applies when `sdf: true`.
 
-##### `wordBreak` (String, optional)
+#### `_getFontRenderer` (function, optional) {#_getfontrenderer}
+
+**Experimental** - supplies a custom glyph renderer.
+
+```ts
+(settings: Required<FontSettings>) => FontRenderer
+```
+
+If provided, this callback is invoked with the resolved font settings and should return an object with:
+
+* `measure`: given a character, returns glyph metrics. The metrics are expected to contain the following fields:
+  - `advance` (number): horizontal distance to move the cursor before placing the next glyph, in pixels.
+  - `width` (number): width of the visible glyph bounds, in pixels.
+  - `ascent` (number): distance from the baseline to the top of the glyph, in pixels.
+  - `descent` (number): distance from the baseline to the bottom of the glyph, in pixels.
+* `draw`: renders a character to glyph image.
+  - `data` ([ImageData](https://developer.mozilla.org/en-US/docs/Web/API/ImageData)): rasterized glyph pixels.
+  - `left` (number, optional): x offset from the glyph origin to the left edge of `data`, in pixels. Default `0`.
+  - `top` (number, optional): y offset from the glyph origin to the top edge of `data`, in pixels. Default `0`.
+
+This hook overrides the default glyph generation path, including the built-in SDF renderer used when `fontSettings.sdf` is enabled.
+
+#### `wordBreak` (string, optional) {#wordbreak}
 
 * Default: `break-word`
 
 Available options are `break-all` and `break-word`. A valid `maxWidth` has to be provided to use `wordBreak`.
 
-##### `maxWidth` (Number, optional)
+#### `maxWidth` (number, optional) {#maxwidth}
 
 * Default: `-1`
 
-`maxWidth` is used together with `break-word` for wrapping text. The value of `maxWidth` specifies the width limit to break the text into multiple lines.
+A unitless number that will be multiplied with the current text size to set the width limit of a string. If specified, when the text is longer than the width limit, it will be wrapped into multiple lines using the strategy of `wordBreak`.
 
-##### `outlineWidth` (Number, optional)
+For example, `maxWidth: 10.0` used with `getSize: 12` is roughly the equivalent of `max-width: 120px` in CSS.
+
+
+#### `contentCutoffPixels` (number[2], optional) {#contentcutoffpixels}
+
+* Default: `[0, 0]`
+
+Minimum visible region of the content box, as `[width, height]` in screen pixels. If the visible width or height is smaller than the specified cutoff, the corresponding text is hidden completely.
+This prop can be used to set the minimum length of clipped texts to improve readability.
+
+Only effective with a valid content box returned by [getContentBox](#getcontentbox).
+
+#### `contentAlignHorizontal` (string, optional) {#contentalignhorizontal}
+
+* Default: `'none'`
+
+Align the text horizontally to the visible region of the content box.
+This prop can be used to keep the text visible while zooming and panning, similar to the CSS `position: 'sticky'` behavior.
+
+Only effective with a valid content box returned by [getContentBox](#getcontentbox). Usually used with a matching [getTextAnchor](#gettextanchor) prop. See the demo of "dynamic align" in [content box behavior](#content-box-behavior).
+
+Supported values:
+
+- `'none'`
+- `'start'`
+- `'center'`
+- `'end'`
+
+
+#### `contentAlignVertical` (string, optional) {#contentalignvertical}
+
+* Default: `'none'`
+
+Align the text vertically to the visible region of the content box.
+This prop can be used to keep the text visible while zooming and panning, similar to the CSS `position: 'sticky'` behavior.
+
+Only effective with a valid content box returned by [getContentBox](#getcontentbox). Usually used with a matching [getAlignmentBaseline](#getalignmentbaseline) prop. See the demo of "dynamic align" in [content box behavior](#content-box-behavior).
+
+Supported values:
+
+- `'none'`
+- `'start'`
+- `'center'`
+- `'end'`
+
+
+#### `outlineWidth` (number, optional) {#outlinewidth}
 
 * Default: `0`
 
-Width of outline around the text, relative to the font size.
+Width of outline around the text, relative to the font size. Only effective if `fontSettings.sdf` is `true`.
 
-##### `outlineColor` (Array, optional)
+#### `outlineColor` (Color, optional) {#outlinecolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -180,20 +358,20 @@ Color of outline around the text, in `[r, g, b, [a]]`. Each channel is a number 
 
 ### Data Accessors
 
-##### `getText` ([Function](/docs/developer-guide/using-layers.md#accessors), optional)
+#### `getText` ([Accessor&lt;string&gt;](../../developer-guide/using-layers.md#accessors), optional) {#gettext}
 
 * Default: `x => x.text`
 
 Method called to retrieve the content of each text label.
 
-##### `getPosition` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getPosition` ([Accessor&lt;Position&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getposition}
 
 * Default: `x => x.position`
 
 Method called to retrieve the location of each text label.
 
 
-##### `getSize` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getSize` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getsize}
 
 * Default: `32`
 
@@ -203,7 +381,7 @@ The font size of each text label, in units specified by `sizeUnits` (default pix
 * If a function is provided, it is called on each object to retrieve its size.
 
 
-##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getcolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -213,7 +391,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 * If a function is provided, it is called on each object to retrieve its color.
 
 
-##### `getAngle` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getAngle` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getangle}
 
 * Default: `0`
 
@@ -223,7 +401,7 @@ The rotating angle of each text label, in degrees.
 * If a function is provided, it is called on each object to retrieve its angle.
 
 
-##### `getTextAnchor` ([Function](/docs/developer-guide/using-layers.md#accessors)|String, optional)
+#### `getTextAnchor` ([Accessor&lt;string&gt;](../../developer-guide/using-layers.md#accessors), optional) {#gettextanchor}
 
 * Default: `'middle'`
 
@@ -233,7 +411,7 @@ The text anchor. Available options include `'start'`, `'middle'` and `'end'`.
 * If a function is provided, it is called on each object to retrieve its text anchor.
 
 
-##### `getAlignmentBaseline` ([Function](/docs/developer-guide/using-layers.md#accessors)|String, optional)
+#### `getAlignmentBaseline` ([Accessor&lt;string&gt;](../../developer-guide/using-layers.md#accessors), optional) {#getalignmentbaseline}
 
 * Default: `'center'`
 
@@ -243,7 +421,7 @@ The alignment baseline. Available options include `'top'`, `'center'` and `'bott
 * If a function is provided, it is called on each object to retrieve its alignment baseline.
 
 
-##### `getPixelOffset` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getPixelOffset` ([Accessor&lt;number[2]&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getpixeloffset}
 
 * Default: `[0, 0]`
 
@@ -253,7 +431,20 @@ Screen space offset relative to the `coordinates` in pixel unit.
 * If a function is provided, it is called on each object to retrieve its offset.
 
 
-##### `getBackgroundColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getContentBox` ([Accessor&lt;number[4]&gt;](../../developer-guide/using-layers.md#accessors), optional) {#getcontentbox}
+
+* Default: `[0, 0, -1, -1]`
+
+Called to retrieve the context box that contains the text. Characters that overflow the area are not displayed. Returns `[x, y, width, height]`, where all values are world space (meter) offsets from the text anchor position.
+
+- `x`, `y` define the rectangle's origin relative to the text anchor.
+- `width`, `height` define the rectangle size.
+- A negative `width` disables clipping on the X axis.
+- A negative `height` disables clipping on the Y axis.
+
+Read more about [content box behavior](#content-box-behavior).
+
+#### `getBackgroundColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getbackgroundcolor}
 
 * Default: `[255, 255, 255, 255]`
 
@@ -264,7 +455,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 * If an array is provided, it is used as the background color for all objects.
 * If a function is provided, it is called on each object to retrieve its background color.
 
-##### `getBorderColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getBorderColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getbordercolor}
 
 * Default: `[0, 0, 0, 255]`
 
@@ -276,7 +467,7 @@ The rgba color is in the format of `[r, g, b, [a]]`. Each channel is a number be
 * If a function is provided, it is called on each object to retrieve its border color.
 
 
-##### `getBorderWidth` ([Function](/docs/developer-guide/using-layers.md#accessors)|Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getBorderWidth` ([Accessor&lt;number&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getborderwidth}
 
 * Default: `0`
 
@@ -296,7 +487,7 @@ The TextLayer renders the following sublayers:
 
 ## Use binary attributes
 
-This section is about the special requirements when [supplying attributes directly](/docs/developer-guide/performance.md#supply-attributes-directly) to a `TextLayer`.
+This section is about the special requirements when [supplying attributes directly](../../developer-guide/performance.md#supply-attributes-directly) to a `TextLayer`.
 
 Because each text string has a different number of characters, when `data.attributes.getText` is supplied, the layer also requires an array `data.startIndices` that describes the character index at the start of each text object. For example, if there are 3 text objects of 2, 3, and 4 characters each, `startIndices` should be `[0, 2, 5, 9]`.
 
@@ -304,8 +495,7 @@ Additionally, all other attributes (`getColor`, `getWidth`, etc.), if supplied, 
 
 Example use case:
 
-```js
-// USE PLAIN JSON OBJECTS
+```ts title="Use plain JSON array"
 const TEXT_DATA = [
   {
     text: 'Hello',
@@ -316,8 +506,8 @@ const TEXT_DATA = [
     text: 'World',
     position: [-122.5, 37.8],
     color: [0, 0, 255]
-  }
-  ...
+  },
+  // ...
 ];
 
 new TextLayer({
@@ -328,9 +518,9 @@ new TextLayer({
 })
 ```
 
-Convert to using binary attributes:
+The equivalent binary attributes would be:
 
-```js
+```ts title="Use binary attributes"
 // USE BINARY
 // Flatten the text by converting to unicode value
 // Non-Latin characters may require Uint16Array
@@ -379,7 +569,7 @@ To use `background: true` with binary data, the background attributes must be su
 
 Following the above example, additional attributes are required to render the background:
 
-```js
+```ts
 // The background position attribute supplies one position for each text block
 const backgroundPositions = new Float64Array(TEXT_DATA.map(d => d.position).flat());
 // The background color attribute supplies one color for each text block
@@ -403,6 +593,130 @@ new TextLayer({
 })
 ```
 
+
+## Remarks
+
+### Use web fonts
+
+The `TextLayer` creates a font texture when it is first added with the [fillText](https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fillText) API. If the font specified by `fontFamily` is not loaded at this point, it will fall back to using the default font just like regular CSS behavior. The loading sequence may become an issue when a web font is used, due to [lazy loading](https://developer.mozilla.org/en-US/docs/Web/Performance/Lazy_loading#fonts).
+
+One way to force a web font to load before the script execution is to preload the font resource:
+
+```html
+<link rel="preload" href="https://fonts.gstatic.com/s/materialicons/v90/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ.woff2" as="font" crossorigin="anonymous" type="font/woff2" />
+<style>
+  @font-face {
+    font-family: 'Material Icons';
+    font-style: normal;
+    font-weight: 400;
+    src: url(https://fonts.gstatic.com/s/materialicons/v90/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ.woff2) format('woff2');
+  }
+</style>
+```
+
+Another way is to use the [FontFace](https://developer.mozilla.org/en-US/docs/Web/API/FontFace/FontFace) API to load a web font before adding the `TextLayer`:
+
+<Tabs groupId="language">
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck} from '@deck.gl/core';
+import {TextLayer} from '@deck.gl/layers';
+
+const deckInstance = new Deck({...});
+renderLayers();
+
+async function renderLayers() {
+  const font = new FontFace('Material Icons', 'url(https://fonts.gstatic.com/s/materialicons/v90/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ.woff2)');
+  // wait for font to be loaded
+  await font.load();
+  // add font to document
+  document.fonts.add(font);
+  // add TextLayer
+  const textLayer = new TextLayer({
+    fontFamily: 'Material Icons',
+    // ...
+  });
+  deckInstance.setProps({
+    layers: [textLayer]
+  });
+}
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React, {useState, useEffect} from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {TextLayer} from '@deck.gl/layers';
+
+function App() {
+  const [fontLoaded, setFontLoaded] = useState<boolean>(false);
+
+  useEffect(() => {
+    (async () => {
+      const font = new FontFace('Material Icons', 'url(https://fonts.gstatic.com/s/materialicons/v90/flUhRq6tzZclQEJ-Vdg-IuiaDsNcIhQ8tQ.woff2)');
+      // wait for font to be loaded
+      await font.load();
+      // add font to document
+      document.fonts.add(font);
+      setFontLoaded(true);
+    })();
+  }, []);
+
+  const textLayer = fontLoaded && new TextLayer({
+    fontFamily: 'Material Icons',
+    // ...
+  });
+
+  return <DeckGL
+    // ...
+    layers={[textLayer]}
+  />;
+}
+```
+
+  </TabItem>
+</Tabs>
+
+
+### Unicode support
+
+The TextLayer has full support for Unicode characters. To reference a Unicode character in JavaScript you can either use a string literal (`'日本語'`, `'©'`) or [escaped code point](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Lexical_grammar#unicode_code_point_escapes) (`'\u{1F436}'`).
+
+At the moment this layer doesn't render multi-color emojis.
+
+### Font Atlas Cache Limit
+
+To conserve memory, DeckGL caches the most 3 used `fontAtlas` by default. Creating a `fontAtlas` is a CPU intesive operation specially if `fontSettings.sdf` is set to `true`. 
+If you are using much more than 3 fonts, you might experience perforamnce hits because DeckGL constantly tries to evict the least most used `fontAtlas` from cache and recreate them when needed.
+
+To mitigate the potential performance degradation, you can override the `fontAtlas` default cache limit by setting `TextLayer.fontAtlasCacheLimit` value:
+
+```ts
+import {TextLayer} from '@deck.gl/layers';
+
+TextLayer.fontAtlasCacheLimit = 10;
+
+// ... rest of the application
+```
+
+It is recommended to set `fontAtlasCacheLimit` once in your application since it recreates the cache which removes existing cached `fontAtlas`.
+
+### Content Box Behavior
+
+Below is an interactive demo of the content box clipping and alignment behavior. Note the coordination between the props.
+
+
+<iframe height="480" style={{width:'100%'}} scrolling="no" title="deck.gl TextLayer content box" src="https://codepen.io/vis-gl/embed/QwKxLRE?default-tab=result" frameborder="no" loading="lazy" allowtransparency="true">
+  See the Pen <a href="https://codepen.io/vis-gl/pen/QwKxLRE">
+  deck.gl TextLayer content box</a> by vis.gl (<a href="https://codepen.io/vis-gl">@vis-gl</a>)
+  on <a href="https://codepen.io">CodePen</a>.
+</iframe>
+
+
+You may observe that text simply disappears when a content box is specified. This is likely because the content box is "too tight" - the characters' bounding boxes interset with the content box, resulting in them being clipped at all times. This is because for many fonts, the actual dimensions of the glyphs can be larger than the number indicated by font size. For example, the Arial fontface with the default `getSize: 32` and `lineHeight: 1` produces a single-line text block of 32px heigh, but glyphs could be as tall as 36px. If the borders of the content box are right against the text block, then taller glyphs will be clipped. This can be mitigated by either setting a padding with `getPixelOffset`, or using a larger `lineHeight`.
 
 ## Source
 

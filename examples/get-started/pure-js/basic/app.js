@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import {Deck} from '@deck.gl/core';
 import {GeoJsonLayer, ArcLayer} from '@deck.gl/layers';
 
@@ -15,7 +19,7 @@ const INITIAL_VIEW_STATE = {
   pitch: 30
 };
 
-export const deck = new Deck({
+new Deck({
   initialViewState: INITIAL_VIEW_STATE,
   controller: true,
   layers: [
@@ -37,7 +41,7 @@ export const deck = new Deck({
       filled: true,
       pointRadiusMinPixels: 2,
       pointRadiusScale: 2000,
-      getRadius: f => 11 - f.properties.scalerank,
+      getPointRadius: f => 11 - f.properties.scalerank,
       getFillColor: [200, 0, 80, 180],
       // Interactive props
       pickable: true,
@@ -59,7 +63,3 @@ export const deck = new Deck({
     })
   ]
 });
-
-// For automated test cases
-/* global document */
-document.body.style.margin = '0px';

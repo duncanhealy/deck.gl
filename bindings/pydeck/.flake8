@@ -5,9 +5,11 @@ max-complexity = 18
 select = B,C,E,F,W,T4,B9
 exclude =
     .git
+    .eggs
     __pycache__
     docs
     build
     dist
     pip-wheel-metadata
     env
+    .venv

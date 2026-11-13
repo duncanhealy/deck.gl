@@ -1,6 +1,7 @@
 """
 Support serializing objects into JSON
 """
+
 import json
 
 from pydeck.types.base import PydeckType
@@ -12,7 +13,9 @@ IGNORE_KEYS = [
     "deck_widget",
     "binary_data_sets",
     "_binary_data",
+    "_tooltip",
     "_kwargs",
+    "_show_error",
 ]
 
 
@@ -31,8 +34,8 @@ def to_camel_case(snake_case):
     """
     output_str = ""
     should_upper_case = False
-    for c in snake_case:
-        if c == "_":
+    for i, c in enumerate(snake_case):
+        if c == "_" and i != 0:
             should_upper_case = True
             continue
         output_str = output_str + c.upper() if should_upper_case else output_str + c
@@ -59,7 +62,10 @@ def lower_camel_case_keys(attrs):
     for snake_key in list(attrs.keys()):
         if "_" not in snake_key:
             continue
-        camel_key = camel_and_lower(snake_key)
+        if snake_key == "_data":
+            camel_key = "data"
+        else:
+            camel_key = camel_and_lower(snake_key)
         attrs[camel_key] = attrs.pop(snake_key)
 
 
@@ -67,19 +73,36 @@ def default_serialize(o, remap_function=lower_camel_case_keys):
     """Default method for rendering JSON from a dictionary"""
     if issubclass(type(o), PydeckType):
         return repr(o)
-    attrs = vars(o)
+
+    # Handle objects without __dict__ (e.g., pandas 3.x DataFrames if detection fails)
+    try:
+        attrs = vars(o)
+    except TypeError:
+        if hasattr(o, "to_dict") and callable(getattr(o, "to_dict", None)):
+            try:
+                return o.to_dict(orient="records")
+            except (TypeError, ValueError):
+                pass
+        return str(o)
+
     attrs = {k: v for k, v in attrs.items() if v is not None}
     for ignore_attr in IGNORE_KEYS:
-        if attrs.get(ignore_attr):
+        if ignore_attr in attrs:
             del attrs[ignore_attr]
     if remap_function:
         remap_function(attrs)
     return attrs
 
 
-def serialize(serializable):
+def serialize(serializable, compact=False):
     """Takes a serializable object and JSONifies it"""
-    return json.dumps(serializable, sort_keys=True, default=default_serialize)
+    return json.dumps(
+        serializable,
+        sort_keys=True,
+        default=default_serialize,
+        indent=None if compact else 2,
+        separators=(",", ":") if compact else None,
+    )
 
 
 class JSONMixin(object):

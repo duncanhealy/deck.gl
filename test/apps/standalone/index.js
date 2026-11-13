@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 /* global deck, document */
 /* eslint-disable no-unused-vars */
 import 'deck.gl/../bundle';
@@ -50,7 +54,7 @@ const nonGeoExample = new deck.DeckGL({
   layers: [
     new deck.PointCloudLayer({
       id: 'pointCloud',
-      coordinateSystem: deck.COORDINATE_SYSTEM.IDENTITY,
+      coordinateSystem: 'cartesian',
       opacity: 1,
       data: points,
       getPosition: d => d.position,

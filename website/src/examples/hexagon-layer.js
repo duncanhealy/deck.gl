@@ -1,13 +1,19 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import React, {Component} from 'react';
 import {readableInteger} from '../utils/format-utils';
 import App, {colorRange} from 'website-examples/3d-heatmap/app';
 
 import {MAPBOX_STYLES, DATA_URI, GITHUB_TREE} from '../constants/defaults';
 
-import makeExample from '../components/example';
+import {makeExample} from '../components';
 
 class HexagonDemo extends Component {
   static title = 'United Kingdom Road Safety';
+
+  static hasDeviceTabs = true;
 
   static data = {
     url: `${DATA_URI}/heatmap-data.txt`,
@@ -73,6 +79,8 @@ class HexagonDemo extends Component {
     return (
       <App
         {...this.props}
+        key={this.props.device?.type}
+        device={this.props.device}
         data={data}
         radius={params.radius.value}
         upperPercentile={params.upperPercentile.value}

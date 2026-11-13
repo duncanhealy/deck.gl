@@ -1,0 +1,361 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {expect} from 'vitest';
+import {Timeline} from '@luma.gl/engine';
+import type {View} from '@deck.gl/core';
+
+function makeEvents(events, opts = {}) {
+  return events.map((type, i) => makeEvent(type, opts, i));
+}
+
+function makeEvent(type, opts, seed) {
+  const event = {
+    type,
+    handled: opts.handled,
+    pointerType: opts.pointerType || (type === 'wheel' ? 'mouse' : 'touch'),
+    device: opts.device,
+    offsetCenter: {x: 100 + seed, y: 100 - seed},
+    delta: -seed - 1,
+    deltaX: seed / 2,
+    deltaY: seed / 2,
+    velocityX: seed / 2,
+    velocityY: seed / 2,
+    velocity: seed / 2,
+    deltaTime: seed,
+    scale: 1 + (seed + 1) * 0.1,
+    rotation: (seed + 1) * 5,
+    srcEvent: {
+      ...opts,
+      preventDefault: () => {}
+    },
+    stopPropagation: () => {
+      event.handled = true;
+    }
+  };
+  return event;
+}
+
+const BASE_PROPS = {
+  x: 0,
+  y: 0,
+  width: 100,
+  height: 100,
+  scrollZoom: true,
+  dragPan: true,
+  dragRotate: true,
+  doubleClickZoom: true,
+  doubleClickDragZoom: true,
+  touchZoom: true,
+  touchRotate: true,
+  keyboard: true
+};
+
+const TEST_CASES = [
+  {
+    title: 'pan',
+    props: {},
+    events: () => makeEvents(['panstart', 'panmove', 'panend']),
+    viewStateChanges: 3,
+    interactionStates: 2 // isDragging, isPanning/isRotating
+  },
+  {
+    title: 'pan#function key',
+    props: {},
+    events: () => makeEvents(['panstart', 'panmove', 'panend'], {metaKey: true}),
+    viewStateChanges: 3,
+    interactionStates: 2 // isDragging, isPanning/isRotating
+  },
+  {
+    title: 'pan#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['panstart', 'panmove', 'panend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'pan#handled event',
+    props: {},
+    events: () => makeEvents(['panstart', 'panmove', 'panend'], {handled: true}),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'pan#disabled',
+    props: {dragPan: false, dragRotate: false},
+    events: () => makeEvents(['panstart', 'panmove', 'panend']),
+    viewStateChanges: 2,
+    interactionStates: 1 // isDragging
+  },
+  {
+    title: 'pan#function key#disabled',
+    props: {dragPan: false, dragRotate: false},
+    events: () => makeEvents(['panstart', 'panmove', 'panend'], {metaKey: true}),
+    viewStateChanges: 2,
+    interactionStates: 1 // isDragging
+  },
+
+  {
+    title: 'pinch',
+    props: {},
+    events: () => makeEvents(['pinchstart', 'pinchmove', 'pinchend']),
+    viewStateChanges: 3,
+    interactionStates: 4 // isDragging, isPanning, isRotating, isZooming
+  },
+  {
+    title: 'pinch#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['pinchstart', 'pinchmove', 'pinchend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'pinch#disabled',
+    props: {touchZoom: false, touchRotate: false},
+    events: () => makeEvents(['pinchstart', 'pinchmove', 'pinchend']),
+    viewStateChanges: 2,
+    interactionStates: 1 // isDragging
+  },
+
+  {
+    title: 'multipan',
+    props: {},
+    events: () => makeEvents(['multipanstart', 'multipanmove', 'multipanend']),
+    viewStateChanges: 3,
+    interactionStates: 2 // isDragging, isRotating
+  },
+  {
+    title: 'multipan#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['multipanstart', 'multipanmove', 'multipanend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'multipan#disabled',
+    props: {touchRotate: false},
+    events: () => makeEvents(['multipanstart', 'multipanmove', 'multipanend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+
+  {
+    title: 'wheel',
+    props: {},
+    events: () => makeEvents(['wheel']),
+    viewStateChanges: 1,
+    interactionStates: 2
+  },
+  {
+    title: 'wheel#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['wheel']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'wheel#disabled',
+    props: {scrollZoom: false},
+    events: () => makeEvents(['wheel']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+
+  {
+    title: 'dblclick',
+    props: {},
+    events: () => makeEvents(['dblclick']),
+    viewStateChanges: 1,
+    interactionStates: 2
+  },
+  {
+    title: 'dblclickdrag',
+    props: {},
+    events: () => makeEvents(['dblclickdragstart', 'dblclickdragmove', 'dblclickdragend']),
+    viewStateChanges: 3,
+    interactionStates: 3
+  },
+  {
+    title: 'dblclick#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['dblclick']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'dblclickdrag#out of bounds',
+    props: {x: 200},
+    events: () => makeEvents(['dblclickdragstart', 'dblclickdragmove', 'dblclickdragend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'dblclick#disabled',
+    props: {doubleClickZoom: false},
+    events: () => makeEvents(['dblclick']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+  {
+    title: 'dblclickdrag#disabled',
+    props: {doubleClickDragZoom: false},
+    events: () => makeEvents(['dblclickdragstart', 'dblclickdragmove', 'dblclickdragend']),
+    viewStateChanges: 0,
+    interactionStates: 0
+  },
+
+  {
+    title: 'keyboard',
+    props: {},
+    events: () =>
+      makeEvents(['keydown'], {code: 'Minus'})
+        .concat(makeEvents(['keydown'], {code: 'Minus', shiftKey: true}))
+        .concat(makeEvents(['keydown'], {code: 'Equal'}))
+        .concat(makeEvents(['keydown'], {code: 'Equal', shiftKey: true}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowLeft'}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowUp'}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowRight'}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowDown'})),
+    viewStateChanges: 8,
+    interactionStates: 2
+  },
+  {
+    title: 'keyboard#function key',
+    props: {},
+    events: () =>
+      makeEvents(['keydown'], {code: 'Minus'})
+        .concat(makeEvents(['keydown'], {code: 'ArrowLeft', shiftKey: true}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowUp', shiftKey: true}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowRight', shiftKey: true}))
+        .concat(makeEvents(['keydown'], {code: 'ArrowDown', shiftKey: true})),
+    viewStateChanges: 5,
+    interactionStates: 2
+  },
+  {
+    title: 'keyboard#disabled',
+    props: {keyboard: false},
+    events: () => makeEvents(['keydown'], {code: 'Minus'}),
+    viewStateChanges: 0,
+    interactionStates: 0
+  }
+];
+
+export function createTestController({
+  view,
+  initialViewState = {},
+  onViewStateChange,
+  onStateChange
+}: {
+  view: View;
+  initialViewState?: any;
+  onViewStateChange?: (params: any) => void;
+  onStateChange?: (newState: any) => void;
+}) {
+  const timeline = new Timeline();
+  const baseProps = {
+    id: 'test-view',
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    ...initialViewState
+  };
+  let currentProps = {...view.controller, ...baseProps};
+  const ControllerClass = currentProps.type;
+
+  const controller = new ControllerClass({
+    timeline,
+    onViewStateChange: params => {
+      const viewState = onViewStateChange?.(params) ?? params.viewState;
+      currentProps = {...currentProps, ...viewState};
+      controller.setProps(currentProps);
+    },
+    onStateChange: newState => {
+      onStateChange?.(newState);
+    },
+    makeViewport: viewState =>
+      view.makeViewport({width: currentProps.width, height: currentProps.height, viewState})
+  });
+
+  controller.setProps(currentProps);
+  return controller;
+}
+
+export default async function testController(ViewClass, defaultProps, blackList = []) {
+  const view = new ViewClass({controller: true});
+  const baseProps = {...BASE_PROPS, ...view.controller, ...defaultProps};
+  const ControllerClass = baseProps.type;
+
+  for (const testCase of TEST_CASES) {
+    if (blackList.includes(testCase.title)) {
+      continue; // eslint-disable-line
+    }
+    const timeline = new Timeline();
+    const affectedStates = new Set();
+    let onViewStateChangeCalled = 0;
+    let controllerProps = {...baseProps};
+    const controller = new ControllerClass({
+      timeline,
+      onViewStateChange: ({viewState, interactionState}) => {
+        if (!interactionState.inTransition) {
+          onViewStateChangeCalled++;
+        }
+        controllerProps = {...controllerProps, ...viewState};
+        controller.setProps(controllerProps);
+      },
+      onStateChange: state => {
+        for (const key in state) {
+          if (state[key] && key.startsWith('is')) {
+            affectedStates.add(key);
+          }
+        }
+      },
+      makeViewport: viewState =>
+        view.makeViewport({width: BASE_PROPS.width, height: BASE_PROPS.height, viewState})
+    });
+    controller.setProps(controllerProps);
+    onViewStateChangeCalled = 0;
+    affectedStates.clear();
+    controllerProps = {...baseProps, ...testCase.props};
+    controller.setProps(controllerProps);
+    await triggerEvents(controller, testCase, timeline);
+
+    expect(onViewStateChangeCalled, `${testCase.title} onViewStateChange`).toBe(
+      testCase.viewStateChanges
+    );
+    expect(affectedStates.size, `${testCase.title} interaction state updated`).toBe(
+      testCase.interactionStates
+    );
+
+    controller.finalize();
+  }
+}
+
+async function triggerEvents(controller, testCase, timeline) {
+  /* eslint-disable no-loop-func */
+  for (const event of testCase.events()) {
+    controller.handleEvent(event);
+    await waitUntil(
+      controller,
+      timeline,
+      () => !controller._eventStartBlocked && !controller._interactionState.inTransition
+    );
+  }
+}
+
+function waitUntil(controller, timeline, verify) {
+  return new Promise(resolve => {
+    const check = () => {
+      if (verify()) {
+        resolve();
+      } else {
+        timeline.setTime(timeline.getTime() + 100);
+        controller.updateTransition();
+        /* global setTimeout */
+        setTimeout(check, 10);
+      }
+    };
+    check();
+  });
+}

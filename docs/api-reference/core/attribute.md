@@ -1,7 +1,5 @@
 # Attribute (Internal)
 
-> This class is a target for refactor.
-
 This class helps deck.gl manage attributes. It integrates into the luma.gl `Model.setAttributes()` method by implementing the `Attribute.getValue()` method. luma.gl checks for the presence of this method on any attribute passed in.
 
 
@@ -10,7 +8,7 @@ This class helps deck.gl manage attributes. It integrates into the luma.gl `Mode
 Create model object by passing shaders, uniforms, geometry and render it by passing updated uniforms.
 
 ```js
-import {_Attribute as Attribute} from './attribute';
+import {Attribute} from '@deck.gl/core';
 ```
 
 ```js
@@ -35,25 +33,25 @@ The constructor for the Attribute class. Use this to create a new Attribute.
 `new Attribute(gl, options);`
 
 * `gl` - WebGL context.
-* `size` (*number*) - The number of components in each element the buffer (1-4).
-* `id` (*string*, optional) - Identifier of the attribute. Cannot be updated.
-* `type` (*GLenum*, optional) - Type of the attribute. If not supplied will be inferred from `value`. Cannot be updated.
-* `isIndexed` (*bool*, optional) - If the attribute is element index. Default `false`. Cannot be updated.
-* `constant` (*bool*, optional) - If the attribute is a constant. Default `false`.
-* `isInstanced` (*bool*, optional) - Whether buffer contains instance data. Default `false`.
-* `normalized` (*boolean*, optional) - Default `false`
-* `integer` (*boolean*, optional) - Default `false`
-* `offset` (*number*, optional) - where the data starts in the buffer. Default `0`.
-* `stride` (*number*, optional) - an additional offset between each element in the buffer. Default `0`.
-* `value` (*TypedArray*) - value of the attribute.
+* `size` (number) - The number of components in each element the buffer (1-4).
+* `id` (string, optional) - Identifier of the attribute. Cannot be updated.
+* `type` (string, optional) - Type of the attribute. If not supplied will be inferred from `value`. Cannot be updated.
+* `isIndexed` (boolean, optional) - If the attribute is element index. Default `false`. Cannot be updated.
+* `constant` (boolean, optional) - If the attribute is a constant. Default `false`.
+* `isInstanced` (boolean, optional) - Whether buffer contains instance data. Default `false`.
+* `normalized` (boolean, optional) - Default `false`
+* `integer` (boolean, optional) - Default `false`
+* `offset` (number, optional) - where the data starts in the buffer. Default `0`.
+* `stride` (number, optional) - an additional offset between each element in the buffer. Default `0`.
+* `value` (TypedArray) - value of the attribute.
     - If `constant` is `true`, the length of `value` should match `size`
     - If `constant` is `false`, the length of `value` should be `size` multiplies the number of vertices.
-* `buffer` (*Buffer*) - an external buffer for the attribute.
+* `buffer` (Buffer) - an external buffer for the attribute.
 
 
 ### delete
 
-Free WebGL resources associated with this attribute.
+Free GPU resources associated with this attribute.
 
 
 ### update
@@ -68,3 +66,19 @@ Update attribute options. See `constructor` for possible options.
 ### getBuffer
 
 Returns a `Buffer` object associated with this attribute, if any.
+
+### getGPUVector
+
+Returns a map from shader attribute names to luma.gl `GPUVector` or `GPUConstant` objects. Unallocated attributes are omitted. A double-precision attribute exposes separate high and low shader entries; varying high and low entries share their backing buffer.
+
+Vectors wrap existing buffers without copying or taking ownership. Their formats, byte offsets, strides, and lengths describe the current attribute storage. Reacquire the map after updates: retaining a vector does not keep an attribute's replaced or deleted buffer alive. Constants contain one raw, unnormalized row, including the original integer format for normalized colors.
+
+
+### GPUVector inputs
+
+Accessor entries in `data.attributes` can contain borrowed luma `GPUVector` objects.
+The attribute preserves the vector's identity, buffer offset, and stride, so supplying the
+same vector again does not rebind unchanged storage. Supply a new vector when its layout changes.
+Vectors must provide a format and one fixed-width chunk backed by a concrete buffer, with
+at least as many rows as the draw count. Float16 and variable-length formats are unsupported.
+The caller owns the vector and its buffer. Attributes requiring CPU transforms need CPU data.

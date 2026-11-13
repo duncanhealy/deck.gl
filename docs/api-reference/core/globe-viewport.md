@@ -1,10 +1,10 @@
 # GlobeViewport (Experimental)
 
-The `GlobeViewport` class takes globe view states (`latitude`, `longitude`, and `zoom`), and performs projections between world and screen coordinates. It is a helper class for visualizing the earth as a 3D globe.
+The `GlobeViewport` class takes globe view states (`latitude`, `longitude`, `zoom`, `bearing`, and `pitch`), and performs projections between world and screen coordinates. It is a helper class for visualizing the earth as a 3D globe.
 
 ## Usage
 
-A `GlobeViewport` instance is created under the hood by a [GlobeView](/docs/api-reference/core/globe-view.md).
+A `GlobeViewport` instance is created under the hood by a [GlobeView](./globe-view.md).
 
 ```js
 import {_GlobeViewport as GlobeViewport} from '@deck.gl/core';
@@ -25,48 +25,50 @@ viewport.project([-122.45, 37.78]);
 ## Constructor
 
 ```js
-new GlobeViewport({width, height, longitude, latitude, zoom});
+new GlobeViewport({width, height, longitude, latitude, zoom, bearing, pitch});
 ```
 
 Parameters:
 
-* `opts` (Object) - Globe viewport options
+* `opts` (object) - Globe viewport options
 
-  + `width` (Number) - Width of the viewport.
-  + `height` (Number) - Height of the viewport.
+  + `width` (number) - Width of the viewport.
+  + `height` (number) - Height of the viewport.
 
   geospatial arguments:
 
-  + `latitude` (Number, optional) - Latitude of the viewport center on map. Default to `0`.
-  + `longitude` (Number, optional) - Longitude of the viewport center on map. Default to `0`.
-  + `zoom` (Number, optional) - Map zoom (scale is calculated as `2^zoom`). Default to `11`.
-  + `altitude` (Number, optional) - Altitude of camera, 1 unit equals to the height of the viewport. Default to `1.5`.
+  + `latitude` (number, optional) - Latitude of the viewport center on map. Default to `0`.
+  + `longitude` (number, optional) - Longitude of the viewport center on map. Default to `0`.
+  + `zoom` (number, optional) - Map zoom (scale is calculated as `2^zoom`). Default to `11`.
+  + `bearing` (number, optional) - Bearing angle in degrees. Default to `0`.
+  + `pitch` (number, optional) - Pitch angle in degrees. Default to `0`.
+  + `altitude` (number, optional) - Altitude of camera, 1 unit equals to the height of the viewport. Default to `1.5`.
 
   projection matrix arguments:
 
-  + `nearZMultiplier` (Number, optional) - Scaler for the near plane, 1 unit equals to the height of the viewport. Default to `0.1`.
-  + `farZMultiplier` (Number, optional) - Scaler for the far plane, 1 unit equals to the distance from the camera to the top edge of the screen. Default to `1`.
+  + `nearZMultiplier` (number, optional) - Scaler for the near plane, 1 unit equals to the height of the viewport. Default to `0.01`.
+  + `farZMultiplier` (number, optional) - Scaler for the far plane, 1 unit equals to the distance from the camera to the top edge of the screen. Default to `1`.
 
 Remarks:
 
 * `width` and `height` are forced to 1 if supplied as 0, to avoid division by zero. This is intended to reduce the burden of apps to check values before instantiating a `Viewport`.
 *  Per cartographic tradition, longitudes and latitudes are specified as degrees.
 
-Inherits all [Viewport methods](/docs/api-reference/core/viewport.md#methods).
+Inherits all [Viewport methods](./viewport.md#methods).
 
 ## Methods
 
-Inherits all methods from [Viewport](/docs/api-reference/core/viewport.md).
+Inherits all methods from [Viewport](./viewport.md).
 
-##### `project`
+#### `project` {#project}
 
 Projects world coordinates to pixel coordinates on screen.
 
 Parameters:
 
-* `coordinates` (Array) - `[longitude, latitude, altitude]`. `altitude` is in meters and default to `0` if not supplied.
-* `opts` (Object)
-  + `topLeft` (Boolean, optional) - Whether projected coords are top left. Default to `true`.
+* `coordinates` (number[]) - `[longitude, latitude, altitude]`. `altitude` is in meters and default to `0` if not supplied.
+* `opts` (object)
+  + `topLeft` (boolean, optional) - Whether projected coords are top left. Default to `true`.
 
 Returns:
 
@@ -75,16 +77,16 @@ Returns:
   + If input is `[longitude, latitude: altitude]`: returns `[x, y, z]`.
 
 
-##### `unproject`
+#### `unproject` {#unproject}
 
 Unproject pixel coordinates on screen into world coordinates.
 
 Parameters:
 
-* `pixels` (Array) - `[x, y, z]` in pixel coordinates. Passing a `z` is optional.
-* `opts` (Object)
-  + `topLeft` (Boolean, optional) - Whether projected coords are top left. Default to `true`.
-  + `targetZ` (Number, optional) - If pixel depth `z` is not specified in `pixels`, this is used as the elevation plane to unproject onto. Default `0`.
+* `pixels` (number[]) - `[x, y, z]` in pixel coordinates. Passing a `z` is optional.
+* `opts` (object)
+  + `topLeft` (boolean, optional) - Whether projected coords are top left. Default to `true`.
+  + `targetZ` (number, optional) - If pixel depth `z` is not specified in `pixels`, this is used as the elevation plane to unproject onto. Default `0`.
 
 Returns:
 
@@ -96,4 +98,4 @@ Returns:
 
 ## Source
 
-[modules/core/src/viewports/globe-viewport.js](https://github.com/visgl/deck.gl/blob/master/modules/core/src/viewports/globe-viewport.js)
+[modules/core/src/viewports/globe-viewport.ts](https://github.com/visgl/deck.gl/blob/master/modules/core/src/viewports/globe-viewport.ts)

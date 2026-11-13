@@ -2,7 +2,7 @@
 
 All notable changes to deck.gl will be documented in this file.
 
-For a human readable version, visit https://deck.gl/#/documentation/overview/upgrade-guide
+For a human readable version, visit https://deck.gl/docs/upgrade-guide
 
 <!--
 Each version should:
@@ -17,9 +17,1258 @@ Each version should:
 Ref: http://keepachangelog.com/en/0.3.0/
 -->
 
-## deck.gl v8.5
+## deck.gl v10.0
+
+### deck.gl v10.0 Prereleases
+
+#### deck.gl [v10.0.0-alpha.1] - Nov 12 2026
+
+- chore(core): upgrade math.gl and loaders.gl to beta.8 and luma.gl to alpha.14 (#11097)
+- refactor(core): isolate Arrow converter and schema source files (#11093)
+- feat(core): prepare Arrow table inputs for column resolution (#11092)
+- refactor(layers): share ScatterplotLayer column definitions (#11091)
+- refactor(core): add runtime-free Arrow schema helpers (#11090)
+- chore(core): upgrade luma.gl to alpha.13 and math.gl/loaders.gl to beta.7 (#11088)
+- refactor(core): separate column selection from preparation (#11071)
+- fix(core): rebind an attribute when its transition is removed (#11068)
+- feat(aggregation-layers): add async GPU readback adapter for CPU aggregators (#11077)
+- chore(core): upgrade luma.gl to alpha.12 and math.gl/loaders.gl to beta.6 (#11080)
+- feat(aggregation-layers): add WebGPU HexagonLayer aggregation with explicit domains (#11062)
+- fix(core): use top-left viewport origin on WebGPU (#11018)
+- feat(extensions): port MaskExtension to WebGPU (#11027)
+- fix(geo-layers): preserve signed DGGS cell identifiers (#11073)
+- feat(aggregation-layers): complete ScreenGridLayer and GridLayer WebGPU rendering (#11063)
+- feat(aggregation-layers): accept borrowed GPUVector inputs in HeatmapLayer (#11061)
+- refactor(core): share Arrow schema compatibility checks (#11070)
+- chore(core): upgrade luma.gl to alpha.11 and math.gl/loaders.gl to beta.5 (#11072)
+- fix(core): reject non-finite custom projection inverses (#10835)
+- feat(layers): adaptively subdivide bitmap UVs with math.gl (#10836)
+- feat(layers): refine paths and polygons with math.gl (#10837)
+- feat(aggregation-layers): add shared compute reduction and WebGPU GridLayer aggregation (#11053)
+- fix(core): orient GlobeView meter offsets east, north and up (#10914)
+- fix(mapbox,maplibre): blend MapLibre globe terrain targets between zoom 11 and 12 (#10825)
+- feat(mesh-layers): accept Arrow and GPUVector columns in ScenegraphLayer (#11059)
+- feat(geo-layers): accept shared Arrow DGGS cell columns (#11055)
+- feat(aggregation-layers): add WebGPU ScreenGrid aggregation (#11052)
+- feat(aggregation-layers): return GPUVectors from WebGLAggregator (#11045)
+- feat(aggregation-layers): accept custom aggregator instances and GPUVectors (#11044)
+- feat(geo-layers): expose shared Tileset2D adapters and per-view tile traversal (#10367)
+- refactor(extensions): pass PathStyle injections directly to plugins (#11049)
+- refactor(core,layers): share PathLayer stroke shaders and uniforms (#11048)
+- feat(layers): add Arrow columns to LineLayer and PointCloudLayer (#11029)
+- feat(layers): add Arrow columns to IconLayer (#11043)
+- feat(mesh-layers): add Arrow columns to SimpleMeshLayer (#11046)
+- feat(layers): accept Arrow columns in ColumnLayer (#11032)
+- feat(extensions): support countItems on WebGPU DataFilter (#11035)
+- feat(extensions): port Fp64Extension to WebGPU (#11033)
+- feat(layers): accept Arrow columns in ScatterplotLayer and ArcLayer (#10920)
+- feat(extensions): port CollisionFilterExtension to WebGPU (#11026)
+- refactor(layers): extract shared Arrow column support (#11028)
+- feat(extensions): port DataFilterExtension to WebGPU (#10990)
+- feat(extensions): port PathStyleExtension dashes and offsets to WebGPU (#11025)
+- feat(extensions): port FillStyleExtension patterns to WebGPU (#11024)
+- feat(extensions): support WebGPU brushing with ShaderPlugins (#10988)
+- feat(extensions): support WebGPU clipping with ShaderPlugins (#10989)
+- feat(core,layers): add shared shader injection targets for WebGPU extensions (#10996)
+- refactor(core): upgrade luma.gl to alpha.10 and reuse upstream model support (#11023)
+- refactor(core,extensions): migrate shader hooks and plugins to luma.gl alpha.9 (#11022)
+- fix(extensions): support MaskExtension in GlobeView (#10654)
+- chore(core): upgrade luma.gl to alpha.8 and math.gl/loaders.gl to beta.4 (#11000)
+- refactor(core): adopt luma.gl alpha.7 and upstream GPU helpers (#10991)
+- refactor(extensions): separate attribute preparation from lifecycle (#10986)
+- fix(geo-layers): restore required GeoTIFF dependency (#10984)
+- feat(aggregation-layers): use GPUVector attributes for heatmap triangles (#10967)
+- feat(core): expose optional Arrow converter (#10957)
+- refactor(core): adopt luma.gl alpha.6 and loaders.gl/math.gl beta.1 (#10970)
+- feat(aggregation-layers): use GPUVector attributes for screen-grid cells (#10958)
+- feat(layers,mesh-layers,geo-layers): use typed GPU attributes in bitmap and mesh models (#10911)
+- feat(layers): use typed GPU attributes in paths and polygons (#10910)
+- feat(layers): use typed GPU attributes in column models (#10908)
+- feat(layers): use typed GPU attributes in standard layers (#10907)
+- chore(geo-layers): upgrade a5-js to v1 (#10912)
+- feat(core): support PROJJSON in the coordinateSystem prop (#10894)
+- feat(layers): use typed GPU attributes in ScatterplotLayer (#10882)
+- feat(core): support arbitrary coordinate reference systems in layers (#10874)
+- feat(core): use math.gl projectionEngine in viewport classes (#10872)
+- feat(core): asynchronous view resolution (#10865)
+- fix(core): apply GlobeView position as east/north/up meter offsets (#10791)
+- feat(core): apply local meter scales in custom projections (#10745)
+- chore(core): upgrade luma.gl to alpha.4, math.gl to alpha.15 and loaders.gl to alpha.11 (#10824)
+- feat(aggregation-layers): aggregate custom projections in common space (#10743)
+- feat(layers): support custom projections in position-based layers (#10742)
+- feat(core): add experimental CustomProjectionView (#10741)
+- feat(core): add position preprojection support (#10740)
+- chore(core): upgrade luma.gl, math.gl and loaders.gl prereleases (#10801)
+- refactor(core): adopt luma.gl 10 and math.gl/loaders.gl 5 prereleases (#10752)
+
+## deck.gl v9.4
+
+### deck.gl v9.4 Prereleases
+
+#### deck.gl [v9.4.0-beta.4] - Sep 3 2026
+
+- chore: fix cjs build (#10651)
+- fix(layers): ScatterplotLayer antialiasing on webgpu (#10642)
+- fix(layers): sdf text outline in webgpu (#10640)
+- fix: export MapLibre integration and update peer ranges (#10645)
+
+#### deck.gl [v9.4.0-beta.3] - Sep 2 2026
+
+- feat(extensions): procedural fill patterns (#10632)
+- fix(extensions): reduce pattern origin in fp64 to stop drift at high zoom (#10633)
+- feat(extensions): fillPatternSizeUnits (#10634)
+- fix(extensions): follow up FillStyleExtension flipY fix (#10629)
+- fix(fill-style): textureGrad for better mip selection (#10628)
+- feat(extensions): add dashUnits (#10583)
+- feat(extensions): add dashMode and whole-path justification (#10582)
+- fix(fill-style): correct pattern orientation by flipping texture y-axis (#10550)
+- feat: FillStyleExtension.getFillPatternBackgroundColor (#10618)
+- chore(deps): bump a5-js from 0.7.2 to 0.10.0 (#10620)
+- feat(extensions): prefilter dash coverage (#10581)
+- fix(extensions): align billboard, 3D, justified, and offset dashes (#10580)
+- fix(extensions): make PathStyle options optional (#10616)
+- CARTO: Remove dead code (moved to api-client) (#10617)
+- fix(core): rotate GlobeView like a ball through poles (#10598)
+- feat(core): support pointer-anchored zoom in GlobeView (#10385)
+- fix(core): compare viewport projection state in equals (#10611)
+- fix(extensions): omit dash uniforms for offset-only path styles (#10607)
+- fix(core): make attribute buffer cleanup idempotent (#10609)
+- feat(core): configure zoom anchors across controllers (#10595)
+
+#### deck.gl [v9.4.0-beta.2] - Sep 2 2026
+
+- Intentionally skipped; no npm distribution was published.
+
+#### deck.gl [v9.4.0-beta.1] - Aug 28 2026
+
+- feat(widgets): custom tooltip system for widget buttons (#10435)
+- feat(widgets): Replace custom SVG icons with Google Material Symbols (#10513)
+- fix(layers): type column geometry attributes (#10508)
+- fix(mapbox): ignore useDevicePixels in interleaved mode (#10510)
+- feat(aggregation-layers): port GridLayer to WebGPU (#10482)
+- feat(geo-layers): port TripsLayer to WebGPU (#10484)
+- feat(layers): port TextLayer glyph rendering to WebGPU (#10473)
+- fix(react): stabilize WebGPU device switching (#10506)
+- feat(mesh-layers): port SimpleMeshLayer to WebGPU (#10485)
+- feat(core): bump luma.gl to latest (#10521)
+- chore: upgrade luma.gl (#10525)
+- feat(core): interleave attribute buffer group on GPU (#10518)
+- feat: add webgl-only endpoints (#10504)
+- chore(widgets): Add PostCSS build pipeline for icon management (#10514)
+- fix(mapbox,google-maps): use css-dpr pixel sizing in overlaid mode to prevent basemap misalignment (#10370)
+- feat(core): override size zoom in OrthographicView (#10532)
+- fix(layers): ColumnLayer flat mode in webgpu (#10535)
+- fix(core): render repeated map viewports correctly with WebGPU (#10536)
+- feat(core): Controller rubberBand option (#10481)
+- fix(core): OrthographicViewport distance scale (#10540)
+- fix(core): use correct stat for updateLayersCount metric (#10469)
+- feat(core): add maxBoundsPadding to controller options (#10541)
+- feat(widgets): support contentBoundsPadding in ScrollbarWidget (#10542)
+- fix(mesh-layers): SimpleMeshLayer matrix constant (#10543)
+- fix(layers): restore SDF text outlines (#10545)
+- fix(core): clipspace depth in wgsl (#10544)
+- fix(layers): derivative-based normal calculation (#10547)
+- Add @deck.gl/maplibre for MapLibre GL JS v4/5/6 (#10566)
+- fix(layers): Remove unused struct definitions (#10568)
+- feat(core): Handle webgpu constant attributes efficiently (#10567)
+- feat(layers): port TextBackgroundLayer to WebGPU (#10569)
+- fix(core): Fp32 array provided to a 64-bit attribute (#10570)
+- feat(mesh-layers): ScenegraphLayer to WebGPU (#10476)
+- feat(layers): add PathLayer analytic antialiasing (#10520)
+- feat(layers): add LineLayer analytic antialiasing (#10558)
+- feat(layers): add ArcLayer analytic antialiasing (#10559)
+- feat(layers): add PointCloudLayer analytic antialiasing (#10560)
+- feat(layers): forward path antialiasing through composite layers (#10561)
+- feat(core): Upgrade luma.gl (#10577)
+- feat(core): MapController rubberBand option (#10572)
+- chore(deps): bump luma and mjolnir (#10594)
+- feat(geo-layers): support Tile3DLayer on WebGPU (#10600)
+- feat(geo-layers): support MVTLayer on WebGPU (#10601)
+- feat(core): Extend View system to support multi-canvas rendering (#10229)
+
+#### deck.gl [v9.4.0-alpha.2] - Jul 29 2026
+
+- fix: add npm metadata to all modules (#10358)
+- feat(jupyter-widget, pydeck): register `@deck.gl/extensions` for JSON `@@type` resolution (#10447)
+- feat(core): add explicit WebGPU buffer groups (#10151)
+- feat(core): add trackpad gesture support to controllers (#10459)
+- examples: update OpenSky Network URLs (#10465)
+- fix: update Zurich Summit 2026 event page map to HIL building (#10445)
+- feat(website): persist selected device tab (#10467)
+- feat(layers): add simple WebGPU layer ports (#10466)
+- fix(react): remove redundant initial render redraw (#10428)
+- feat(pydeck): register GlobeView canonical alias in jupyter-widget (#10451)
+- feat(aggregation-layers): port HexagonLayer to WebGPU (#10471)
+- feat(aggregation-layers): port ScreenGridLayer to WebGPU (#10472)
+- feat(layers): port BitmapLayer to WebGPU (#10470)
+- feat(pydeck): add lighting and post-processing effects (#10455)
+- refactor(core): make WebGPU shader props unconditional (#10479)
+- feat(website): pass device to example apps (#10480)
+- feat(layers): port PathLayer to WebGPU (#10113)
+- refactor(core): honor canvas contexts throughout render passes (#10474)
+- fix(core): position widgets relative to their canvas (#10491)
+- feat(aggregation-layers): port HeatmapLayer to WebGPU (#10483)
+- feat(layers): port SolidPolygonLayer to WebGPU (#10142)
+- chore: update luma.gl to 9.4.0-alpha.1 (#10478)
+- chore(test): enable render tests for WebGPU (#10493)
+- feat(website): enable WebGPU polygon-dependent examples (#10494)
+- fix(core): preserve WebGPU polygon side buffers (#10505)
+
+#### deck.gl [v9.4.0-alpha.1] - Jul 16 2026
+
+- fix(core): do not write View clearColor into the picking buffer (#10431)
+- feat(widgets): add zoomStep to ZoomWidget (#10426)
+- feat(core): upgrade mjolnir.js for DoubleClickDrag recognizer (#10416)
+- fix(mapbox): avoid crash when MapboxOverlay beforeId layer is removed (#10425)
+- fix(widgets): InfoWidget not rendering on hover/click (#10421)
+- fix(layers): Add missing `@types/geojson` dependency (#10268)
+- feat(core): Support multiple event managers (multi-canvas prep) (#10375)
+- fix(arcgis): update arcgis module to use RenderNode instead of externalRenderers (#10257)
+- fix(geo-layers): Pass zoomOffset through TerrainLayer to child TileLayer (#10382)
+- chore(deps): bump loaders.gl to ^4.4.3 (#10380)
+- refactor(geo-layers): prioritize tile requests by viewport center (#10364)
+- fix(layers): closed shapes with binary data and transition props (#10094)
+- fix(core): use correct mjolnir requireFailure key for recognizers (#10323)
+- feat(extensions): TerrainExtension GlobeView support (#10251)
+- feat(core): doubleClickDragZoom gesture (#10327)
+- chore(core): Adopt luma CanvasContext (#10228)
+- feat(core): Row index based picking (#10302)
+- fix(geo-layers): TerrainLayer GlobeView support (#10250)
+- feat(core): Remove redundant instance picking colors (#10275)
+- fix(core): Tile3DLayer renders correctly on GlobeView (#10252)
+- fix(heatmap): compilation failure on Qualcomm Adreno 660 (#10301)
+- feat(core): GlobeController with inertia, tilt & pan (#10298)
+- fix(extensions): MaskExtension compatible with TerrainExtension (#10187)
+- feat(carto): Clipped polygon labels (#10278)
+- feat(core): ViewProps.parameters (#10262)
+- feat(layers): add getPixelOffset prop to ScatterplotLayer (#10178)
+- fix(layers): GeoJsonLayer TypeScript types elevationScale as number (#10261)
+- fix(google-maps, arcgis): Wrap external FB handle (#10253)
+- fix(react): Align React widget names with pure js (#10239)
+- feat(widgets): ScrollbarWidget falls back to controller.maxBounds (#10236)
+- fix(widgets): ThemeWidget does not apply theme variables on initial add (#10238)
+- fix(widgets): CoordinateGeocoder edge case handling (#10235)
+- feat(widgets): unify viewId handling (#10234)
+- fix(widgets): SplitterWidget types (#10233)
+
+## deck.gl v9.3
+
+### deck.gl v9.3 Prereleases
+
+#### deck.gl [v9.3.0-beta.2] - Apr 11 2026
+
+- fix(widgets): ZoomWidget works with OrthographicView (#10202)
+- fix(aggregation-layers) Fix nvidia compilation error (#10191)
+- fix(widgets): Move @floating-ui/dom to dependencies (#10189)
+
+#### deck.gl [v9.3.0-beta.1] - Apr 7 2026
+
+- feat(extensions): Add dashed stroke support for ScatterplotLayer and TextBackgroundLayer (#9976)
+- chore(test-utils): Separate tape tests from vitest and clean up CI (#10061)
+- fix(geo-layers): Ensure zoomOffset is correctly part of the round/ceil Z calculation (#9807)
+- feat(widgets): Add controlled mode and state callbacks (#9973)
+- chore(mapbox): Remove MapboxLayer and _renderLayersInGroups (#10163)
+- fix(mapbox): automatically inject 'mapbox' view in overlaid mode for multi-view consistency (#9947)
+- feat(core): AttributeManager allocates Buffers for constant WebGPU at… (#10152)
+- feat(core) coordinateSystem prop now accepts no-import string constants (#10140)
+- fix(layers): discard fragments outside rounded rect in TextBackgroundLayer (#10177)
+- fix(layers): submit command buffer after texture copy in IconLayer resize (#10176)
+- fix(core): WebGPU Picking fix (#10175)
+- feat(layers): TextLayer uses real text metrics (#10164)
+- chore(geo-layers): Update h3 & a5 dependencies (#10170)
+
+#### deck.gl [v9.3.0-alpha.6] - Apr 2 2026
+
+- feat(TileLayer): Add visibleMinZoom & visibleMaxZoom props (#10091)
+- fix(mapbox): onBefore|AfterRender fires without layers (#10166)
+- fix(mapbox): Prevent crash when deck uninitialized (#10167)
+- feat(main): export all widgets from deck.gl main module (#10160)
+- chore: Bump to luma@9.3.1 & loaders@4.4.1 (#10158)
+- fix(layers): Texture handling in WebGPU (#10157)
+- chore: Bump luma.gl@alpha.11 (#10141)
+- chore(json): Typing improvements (#9641)
+- feat(core): simplify layer plumbing for WebGPU (#9820)
+- chore: enable source map in website dev mode (#10156)
+
+#### deck.gl [v9.3.0-alpha.5] - Mar 31 2026
+
+#### deck.gl [v9.3.0-alpha.4] - Mar 31 2026
+
+- fix(TerrainController): Better React controlled mode behavior (#10144)
+- fix(react): Avoid double render in controlled mode (#10143)
+- feat(core,react,docs): Add async deck picking methods (#9733)
+- chore: bump peerDependencies to ~9.3.0-alpha.1 (#10139)
+- chore: Upgrade to luma.gl 9.3.0-alpha.10 (#10123)
+
+#### deck.gl [v9.3.0-alpha.3] - Mar 27 2026
+
+- feat(core): TerrainController (#10134)
+
+#### deck.gl [v9.3.0-alpha.2] - Mar 26 2026
+
+- chore: upgrade Node.js from 20 to 22 (#10051)
+- chore(core): Use non-deprecated props for lighting module (#10121)
+- feat(layers): add clipping to TextLayer (#10118)
+- feat(core): FirstPersonController supports maxBounds (#10115)
+- feat(core): OrthographicView supports maxBounds (#10108)
+- feat(core): OrbitController supports maxBounds (#10116)
+- feat(core): GlobeView supports maxBounds (#10111)
+- feat(core): more intuitive OrbitController (#10117)
+- feat(core): controller normalizes viewport on dimension change (#10109)
+- feat(chore): new Deck metrics (#10100)
+- feat(core): deep merge view states (#10104)
+- chore: Bump to luma.gl@9.3.0-alpha.6 (#10107)
+- feat(core): controller maxBounds (#10105)
+- feat(core): OrthographicView: soft-deprecate array zoom (#10106)
+- feat(widgets): v9.3 graduation (#10096)
+- feat(website): Add ScrollbarWidget to OrthographicView example (#10099)
+- feat(website): Widget documentation pass (#10095)
+- feat(widgets): generic controls (#10090)
+- feat(widgets): ContextMenuWidget API audit (#10087)
+- feat(widgets): Widget common component improvements (#10089)
+- feat(widgets): Merge FpsWidget into StatsWidget (#10085)
+- fix(widgets): properly clean up Popover element on widget removal (#10088)
+- fix(mapbox): handle null viewport (#10086)
+- feat(widgets): Update SplitterWidget (#10072)
+- fix(widgets): TimelineWidget bugs (#10081)
+- feat(react): React widget exports (#10083)
+- Add missing update dependencies (#10082)
+- fix(mapbox): guard against null viewport when canvas has zero dimensions (#10076)
+- fix: updates pydeck pyproject.toml to include dynamic field (#10048)
+- fix(react): DeckGL avoid overwriting undefined views prop (#10074)
+
+#### deck.gl [v9.3.0-alpha.1] - Mar 10 2026
+
+- fix(Tile3DLayer): Pass through tileset loadOptions to Tileset3D (#10079)
+- feat(Tile3DLayer): mark rendered tiles as drawn (#10058)
+- chore: bump to luma.gl@9.3 (#10034)
+- chore: bump to loaders.gl@4.4 (#9972)
+- feat(widgets): migrate TimelineWidget to RangeInput (#10071)
+- feat(widgets): Add ScrollbarWidget (#10068)
+- fix(TerrainExtension): Handle pick events in TerrainExtension & draped layers (#10037)
+- fix(widgets): Respect min/maxZoom (#10033)
+- Upgrade Node.js from 18 to 20 across build, test, website and repo (#10050)
+- feat(widgets): misc cleanup (#10045)
+- feat(widgets) StatsWidget styling and docs pass (#10044)
+- fix(widgets): ResetViewWidget default viewId (#10042)
+- update popover components (#10041)
+- Fix fullscreen widget default container (#10040)
+- fix(Tile3DLayer): prefers loaders prop over loader (#10036)
+- feat(core): 3D enable MapController using rotatationPivot option (#9938)
+- feat(widgets): ContextMenuWidget improvements (#10031)
+- feat(widgets): PopupWidget (#10030)
+- feat(widgets): Use popper to calculate popup position (#10029)
+- fix(widgets) events in react reverse controlled env (#8893)
+- Remove Volta from deck.gl (#9970)
+- Port IconLayer to WebGPU (#9819)
+- chore(ci): migrate from Volta to Corepack for automated builds (#9910)
+- Update .gitignore (#9878)
+
+## deck.gl v9.2
+
+### deck.gl v9.2 Prereleases
+
+#### deck.gl [v9.2.0-beta.4] - Oct 6 2025
+
+- Invoke transform function for constant attributes (#9741)
+- Pass `vertexValid` to SolidPolygonLayer when using binary GeoJSON (#9805)
+- Add IconLayer sizeBasis prop (#9736)
+- fix: Maplibre interleaved resize handling (#9803)
+- Fix potential undefined deck in FPS calculation (#9800)
+
+#### deck.gl [v9.2.0-beta.3] - Sep 26 2025
+
+- fix(extensions): correctly activate picking module in terrain picking pass (#9768)
+- fix(widgets): widget bug bash (#9797)
+- chore(widgets) audit props and docs (#9796)
+- fix(maplibre): Update default view once projection is known (#9794)
+
+#### deck.gl [v9.2.0-beta.2] - Sep 25 2025
+
+- chore: bump luma to 9.2.0 (#9792)
+- fix: HeatmapLayer working with binary data (#9787)
+- fix: picking on non-geospatial tile layer with modelMatrix (#9703)
+- CARTO: Support h3 in ClusterTileLayer (#9755)
+
+#### deck.gl [v9.2.0-beta.1] - Sep 19 2025
+
+#### deck.gl [v9.2.0-alpha.3] - Sep 15 2025
+
+- fix(core): orthographic scroll zoom transitions (#9769)
+- fix(widgets): Minor widget fixes (#9758)
+- CARTO: Support h3 in HeatmapTileLayer (#9753)
+- feat(widgets): Support custom widgets in pydeck via custom_libraries (#9745)
+- feat(core): Add async DeckPicker methods (#9732)
+- feat(webgpu): Enable transparency for WebGPU and ported example layers (#9730)
+- fix(webgpu): Emulate constant attributes as buffers and trigger update on constant change (#9726)
+- fix(layers): correctly identify elevationData strings using TMS (#9712)
+- fix(mesh-layers): Include `@loaders.gl/schema` dependency (#9697)
+- feat(layers): Port ScatterplotLayer to WebGPU / WGSL (#9432)
+- chore(geo-layers): version bump A5 (#9707)
+- fix(core): correct opacity in interleaved mode (#9642)
+- feat(core): Support clear color, depth, and stencil on multiple views (#9650)
+- fix(mapbox): Fix view selection logic in getViewport (#9688)
+- chore: Bump to luma.gl@9.2.0-alpha (#9241)
+- fix(google): Do not force canvas resize (#9695)
+- fix(CARTO): H3 tile bounding box includes edge children (#9693)
+- fix(core): onClick callback does not handle dblclick (#9629)
+
+#### deck.gl [v9.2.0-alpha.2] - Jun 4 2025
+
+- CARTO: refactor to remove fetchmap code  (#9619)
+
+#### deck.gl [v9.2.0-alpha.1] - May 27 2025
+
+- feat(widgets): GeocoderWidget and experimental Geocoders (#9610)
+- Feature: Add A5Layer (#9626)
+- feat(widgets) Add StatsWidget (#9623)
+- feat(widgets): New GimbalWidget (#9614)
+- feat(widgets): New ContextMenuWidget (#9616)
+- feat(widgets): FpsWidget (#9607)
+- feat(widget): Add geocoder support to GeolocateWidget (#9608)
+- [feat] ViewSelectorWidget (#9591)
+- chore(widgets): Join Widget and WidgetImpl, clean up widgets (#9576)
+- feat(core): Add View.clone() method (#9588)
+- feat(widgets): minimal TimelineWidget (#9587)
+- feat(react): Add missing react widget wrappers (#9589)
+- chore: More lint fixes (#9582)
+- chore: Bump luma to 9.1.9 (#9583)
+- feat: Port point-cloud-layer to WebGPU (#9531)
+- chore(widgets): Light code reorg (#9573)
+- chore: Reduce lint errors (#9550)
+- [feat]: SplitterWidget (#9565)
+- docs(widgets) demos and a pass on sources, styling, and TOC (#9559)
+- feat(widgets) theme widget applies styles to widget container (#9558)
+- chore: Bump to luma.gl@9.1.7 (#9556)
+- [feat] Add hover support to InfoWidget (#9552)
+- feat(widgets): Simple GeolocateWidget (#9488)
+- feat(widgets): New LoadingWidget (#9485)
+- feat(widgets): New ScaleWidget (#9491)
+- feat(widgets): ThemeWidget (#9471)
+- POC: PopupWidget (#8958)
+- Revert #9483 using 6 coordinates in glViewport (#9542)
+- Append `.js` to WebGPU shaders for script builds (#9537)
+- chore: Bump to luma.gl@9.1.5 (WebGPU fixes) (#9525)
+- feat: line layer and project module port to WGSL, test app for WebGPU line (#9509)
+- fix(chore): Disable constant attributes under WebGPU (#9506)
+- chore: WebGPU plumbing (#9502)
+- chore: WebGPU plumbing (#9480)
+- chore: WebGPU plumbing #1 (#9476)
+- feat(widgets): New ResetViewWidget (#9456)
+- feat(widgets) New ScreenshotWidget (#9454)
+
+
+## deck.gl v9.1
+
+### deck.gl v9.1 Prereleases
+
+#### deck.gl [v9.1.0-beta.3] - Jan 15 2025
+
+- CARTO: Support gzip compression in RasterLayer (#9352)
+- DataFilterExtension category filtering uint32 attribute (#9350)
+
+#### deck.gl [v9.1.0-beta.2] - Jan 14 2025
+
+- LayersPass: remove deprecated clearWebGL() call (#9338)
+- chore: bump luma to 9.1.0-beta.16 (#9345)
+- add(pydeck) support for deck.gl widgets (#9342)
+- feat(mapbox): support Maplibre globe projection (#9296)
+- chore(widgets) props should be types rather than interfaces (#9333)
+- fix(core): conflicting resize logic when using non-default useDevicePixels (#9326)
+- feat(json) support for deck.gl widgets (#9314)
+- Upgrade to the latest dev tools (#9284)
+- chore: bump luma.gl (#9295)
+- Revert added type declarations from #8945 (#9318)
+- feat(widgets) onRemove can be optional (#9308)
+- chore(widgets) cleanup widget constructors (#9312)
+- fix(widgets) Widgets should be reactive to prop changes (#9315)
+- chore: gpuAggregation set to true (#9301)
+- feat(widgets): Remove `onViewportChange` Update Guard for Widgets (#9303)
+- fix(widgets): widget style prop keys should accept camelCase css properties and dashed css variables (#8991)
+- Match GlobeView projection parameters with Maplibre v5 (#9201)
+- CARTO: Fix seams between tiles in RasterTileLayer (#9286)
+- fix(mapbox) Remove type dependency on mapbox-gl (#9279)
+- refactor(carto): Refactor fetchMap() for deck.gl v9.1 (#9232)
+- Bump mjolnir.js (#9275)
+- chore: fix peer dependency versions (#9266)
+- Types: luma.gl Parameters (#9209)
+- fix(carto): Add missing re-exports from API client in v9.1 (#9267)
+
+#### deck.gl [9.1.0-beta.1] - Nov 21 2024
+
+- Generic module props handling in Layer class (#9192)
+- Update license headers (#9191)
+- Upgrade mjolnir.js to v3 (#9144)
+- Remove updateModuleSettings from codebase (#9160)
+- Fix countItems in DataFilterExtension (#9158)
+- chore: Use WebGLDevice when using webgl-only APIs
+- Remove NaN uniform (#9174)
+- GPU Aggregation: miscellaneous clean up (#9142)
+- GPU Aggregation: Support *ScaleType and *Percentile props (#9130)
+- Aggregation UBO 2/2 (#9133)
+- Fix GPUAggregator on M chips (#9128)
+- Aggregation layers UBO (#9114)
+- GPU Aggregation (8/8): Remove legacy aggregator (#9100)
+- GPU Aggregation (7/8): ContourLayer (#9099)
+- GPU Aggregation (6/8): HexagonLayer (#9098)
+- GPU Aggregation (5/8): GridLayer (#9096)
+- refactor(json): Remove expression-eval dependency (#9070)
+- Update PBR code to use luma pbrMaterial (#9093)
+- Lighting UBO (#9074)
+- CARTO: HeatmapTileLayer full colorRange (#9068)
+- HeatmapLayer UBO (#9071)
+- shadow module UBO (#9054)
+- ShaderModule type update (#9044)
+- core module UBO (#9040)
+- carto module UBO (#9038)
+- HeatmapLayer fix to work with project UBO (#9037)
+- geo-layers UBO (#9036)
+- mesh-layers UBO (#9035)
+- refactor: Layers UBO (#9008)
+- Extensions UBOs (#9001)
+- DataFilterExtension UBOs (#8998)
+- Move ScatterplotLayer & BitmapLayer to UBOs (#8875)
+- GPU Aggregation (4/8): ScreenGridLayer (#8942)
+- GPU Aggregation (3/8): CPUAggregator (#8888)
+- GPU Aggregation (2/8): GPUAggregator (#8887)
+- GPU Aggregation (1/8): Aggregator and AggregationLayer (#8886)
+- Use UBOs in project module (#8782)
+- Remove WebGL-only triangle-fan topology (#8860)
+- feat(layers): Simplify ArcLayer (#8859)
+- chore: Remove internal texture parameters (v9.1) (#8851)
+
+## deck.gl v9.0
+
+### deck.gl v9.0 Prereleases
+
+#### deck.gl [9.0.0-beta.11] - Apr 24 2024
+
+- Publish NPM packages from CI (#8828)
+
+#### deck.gl [9.0.0-beta.10] - Mar 20 2024
+
+- Add Zoom and Compass widgets (#8072)
+- fix(extensions): Use lodMaxClamp to disable m ips (#8677)
+- chore(*): Use stable '@loaders.gl/*' (#8679)
+- View and view state types improvements (#8663)
+- Fix PostProcessEffect render to framebuffer (#8661)
+- Fix IconManager upsizing auto-packed icon atlas (#8673)
+- feat(carto): Export types for generic source options (#8651)
+- chore: Bump luma to 9.0.4 (#8676)
+- Fix SolidPolygonLayer lighting (#8669)
+- Fix FillStyleExtension artifact (#8668)
+- Support loaders.gl v4 Table object (#8664)
+- fix(core): support view.clear (#8665)
+- Clean up dev dependencies (#8653)
+- Remove terrainModule from ShaderAssembler on cleanup (#8666)
+- Chore: Bump luma to 9.0.3 (#8659)
+- feat(carto): Cache pending requests (#8648)
+- Implement panning in FirstPersonController (#8166)
+- feat(geo-layers): add TileLayerPickingInfo type (#8645)
+- fix(react): move types to devDependencies (#8644)
+- Fix attribute transition (#8643)
+
+#### deck.gl [9.0.0-beta.9] - Mar 13 2024
+
+- Mask Extension: Handle case when no viewport exists (#8627)
+- Clamp Uint8Arrays in typedArrayFromDataType (#8631)
+- Type improvements (#8628)
+- chore: Upgrade to luma.gl@^9.0.0 (#8642)
+- feat(carto): Sort params in request cache key (#8638)
+- PointCloudLayer colors attribute type use 'unorm8' (#8633)
+- feat(geo-layers): Add .debounceTime option to Tileset2D, TileLayer (#8589)
+- feat(carto): Add 'tileResolution' and 'blockSize' (#8502)
+- feat(layers): specify feature properties type for GeoJsonLayer (#8623)
+- carto: columns support cleanup (#8413)
+- fix(arcgis) reenable build (#8622)
+
+#### deck.gl [9.0.0-beta.8] - Mar 11 2024
+
+- TerrainExtension: bind texture rather than FBO (#8611)
+- Remove dev dependency on react-map-gl v5 (#8618)
+- chore: Bump luma to beta.10 (#8610)
+- fix(arcgis): DeckGL rendering integration (#8545)
+- chore: bump probe.gl (#8617)
+- prevent js files in venv from being identified as part of deckgl module (#8609)
+- chore(deps): Update to loaders.gl v4.2.0-alpha.5 (#8604)
+- fix(core) warn and error when WebGL1 detected (#8548)
+- ignore bindings directory when running linter (#8598)
+- Correct operator precedence for clearColor in LayersPass (#8599)
+
+#### deck.gl [9.0.0-beta.7] - Mar 7 2024
+
+- chore: bump luma 9.0.0 beta.8 (#8586)
+- Audit module dependencies (#8573)
+- remove(mapbox) public MapboxLayer api (#8585)
+- Avoid creating empty buffer for attributes (#8576)
+
+#### deck.gl [9.0.0-beta.6] - Mar 5 2024
+
+- CARTO: Respect clientId property (#8581)
+- Change Attribute.type to VertexType from WebGL constants (#8572)
+- Cherry pick luma global exports in core bundle (#8574)
+- chore: Bump luma to 9.0.0-beta.6 (#8567)
+- CARTO: Mark filters parameter as optional (#8566)
+- fix(widgets): publish stylesheet (#8571)
+- chore(build): restore inline-webgl-constants transform (#8563)
+- Respect `DataT` on `TripsLayer` props (#8533)
+- chore(build): remove glsl comments (#8531)
+- fix(core): LayersPass#render should clear canvas by default (#8543)
+
+#### deck.gl [9.0.0-beta.5] - Feb 27 2024
+
+- Provide defaultOptions for DataFilterExtension (#8540)
+- Fix Deck error when finialize() is called before initialization (#8532)
+- Fix mapbox overlay alignment style (#8536)
+
+#### deck.gl [9.0.0-beta.4] - Feb 23 2024
+
+- Use SamplerProps type for textureParameters prop (#8520)
+- CARTO: Add filters to v9 sources (#8513)
+- transform d.ts files (#8505)
+- Category filtering in DataFilterExtension (#7915)
+- CARTO: Do not hardcode blockWidth in RasterLayer (#8498)
+- Bump ocular-dev-tools (#8478)
+- Support Tilejson in data prop for MVTLayer (#8432)
+
+#### deck.gl [9.0.0-beta.3] - Feb 14 2024
+
+- chore(types): Remove remaining references to /typed entrypoints (#8481)
+- TerrainExtension: Support picking on draped layers (#8474)
+- Fix test-dist (#8484)
+- Fix test-utils typescript errors (#8483)
+- Fix typing in ColumnLayer (#8453)
+- chore: Bump to loaders@4.1.0 (#8480)
+- Use texture for depth attachment in CollisionFilterEffect (#8477)
+- v9 postprocessing (#8479)
+- fix(core): Ensure picking buffer is cleared before each pass (#8475)
+- v9 audit tile layer types (#8387)
+- Audit Layer#isLoaded implementations (#8386)
+- Improve projection for very high zoom levels (#8454)
+- chore: Remove webgl imports 2 (#8473)
+- chore: Reduce webgl module imports (#8472)
+- Move to ESM modules (#8460)
+
+#### deck.gl [9.0.0-beta.2] - Feb 5 2024
+
+- [v9] HeatmapLayer (#8380)
+- Bump quadbin to 0.2.0 (#8462)
+- [v9] MapboxLayer (#8442)
+
+#### deck.gl [9.0.0-beta.1] - Jan 22 2024
+
+- chore(core): Remove getBufferData helper (#8425)
+- chore(lint): Fix lint errors (#8426)
+- CARTO: Only send baseUrl when request over max length (#8429)
+- [v9] Align picking module PickingProps with luma (#8405)
+- fix(aggregation-layers): Disable gpu aggregation by default (#8416)
+
+#### deck.gl [9.0.0-alpha.7] - Jan 16 2024
+
+- [v9] Remove ShaderModule type (#8406)
+- fix(aggregation-layers): Fix screen-grid-layer with CPU aggregation (#8401)
+- [chore] Bump to loaders-4.1.0-alpha.9 (#8402)
+- [v9] Port plot-layer shaders to glsl300 (#8398)
+- fix(core): Update AttributeTransitionUtils for Luma v9 (#8392)
+- [v9] Tile3DLayer (#8357)
+- Update extension shaders to GLSL 300 (#8394)
+- [v9] ScenegraphLayer (#8350)
+- [v9] Picking module with uniform buffers (#8334)
+- chore(luma): Upgrade to luma.gl v9 alpha-50 (#8379)
+- bump ocular-devtools and adapt to typescript, prettier & eslint upgrade (#8366)
+- Update remaining shaders to GLSL 300 (#8373)
+- Update BitmapLayer, IconLayer, PointCloudLayer, TripsLayer to GLSL 300 (#8372)
+- Update ArcLayer, LineLayer, PolygonLayer to GLSL 300 (#8371)
+- Update PathLayer to GLSL 300 (#8370)
+- Update Scatterplot to GLSL 300 (#8369)
+- [v9] Fix GoogleMapsOverlay by not clearing canvas (#8351)
+- Remove use of deprecated BufferWithAccessor (#8345)
+- carto/fetchMap: fix support for quantile color scale in numeric columns for static tilesets (#8347)
+- CARTO: Remove mapsUrl (#8308)
+
+#### deck.gl [9.0.0-alpha.6] - Nov 21 2023
+
+- [CARTO] User boundaries support (#8296)
+
+#### deck.gl [9.0.0-alpha.5] - Nov 20 2023
+
+- [chore] Bump peerDependencies to 9.0.0 (#8295)
+- Expose types at the package roots (#8293)
+
+#### deck.gl [9.0.0-alpha.4] - Nov 16 2023
+
+- CARTO: Handle empty 204 responses (#8286)
+- Improve Tile3DLayer#isLoaded (#8285)
+- v9 CollisionFilterExtension (#8255)
+- Pass clearColor to luma RenderPass from MaskPass
+- Always provide all the shadowMap bindings (#8246)
+- CARTO: Add queryParameters to stats requests in fetchMap
+- CARTO: QueryParameters should be optional for boundaries (#8282)
+
+#### deck.gl [9.0.0-alpha.3] - Nov 14 2023
+
+- Use vertexPositions in getBounds (#8247)
+
+#### deck.gl [9.0.0-alpha.2] - Nov 13 2023
+
+- [chore] Bump loaders 4.0.3 & luma 9.0.0-alpha.42 (#8262)
+- Use getStride() in bufferLayoutEqual() comparison (#8268)
+- Fix pickObjects when using binary data (#8216)
+
+#### deck.gl [9.0.0-alpha.1] - Nov 10 2023
+
+- Add widgets prop to Deck class (#8023)
+- add(widgets) fullscreen widget (#8024)
+- chore: Fix widget module publishing (#8178)
+- Fix widgets stylesheet.css (#8210)
+- chore: use node 18 (#8222)
+- chore: loaders.gl update to v4.0 (#8215)
+- chore: math.gl update to v4.0 (#8204)
+- Fix SimpleMeshLayer (#8201)
+- chore: luma.gl update to v9.0 (#8195)
+- Binary attribute support (#8153)
+- CARTO v9 API (#8269, #8265, #8259, #8239, #8238, #8228, #8233, #8225, #8224, #8218, #8217, #8214, #8168, #8192, #8191, #8167)
+- Add tensorflow example (#7931)
+- Update layers to luma v9 (#7901)
+
+## deck.gl v8.10
+
+### deck.gl v8.10 Prereleases
+
+#### deck.gl [8.10.0-alpha.2] - Jul 28 2023
+
+- add(modules) widget module (#8016)
+- Normalize h3 cluster polygons longitudes (#8010)
+- Add WidgetManager (#7947)
+
+#### deck.gl [8.10.0-alpha.1] - Jun 5 2023
+
+- update h3-js to v4 (#7913)
+
+## deck.gl v8.9
+
+### deck.gl v8.9 Prereleases
+
+#### deck.gl [8.9.0-beta.5] - Mar 10 2023
+
+- Fix bundle settings (#7741)
+
+#### deck.gl [8.9.0-beta.4] - Mar 8 2023
+
+- Prop types API improvements (#7726)
+- deepEqual consistency (#7725)
+- Move getBounds calculation to AttributeManager (#7690)
+- Retype layer.props.data (#7682)
+- TextLayer scaling consistency (#7694)
+- Update mask when layer instance changes (#7692)
+
+#### deck.gl [8.9.0-beta.3] - Feb 23 2023
+
+- Consolidate common utils in extensions (#7654)
+- Rerender collision map when isLoaded flag changes (#7680)
+- chore(extensions): CollisionFilterExtension API Audit (#7675)
+- chore(geo-layers): WMSLayer API audit (#7677)
+- chore(extensions): TerrainExtension API Audit (#7678)
+- Fix ImageryLayer projection (#7670)
+- feat(geo-layers): ImageryLayer for WMS (includes RFC and initial docs) (#7575)
+
+#### deck.gl [8.9.0-beta.2] - Feb 17 2023
+
+- DeckRenderer to TypeScript (#7656)
+- Fix autoHighlight crash when TileLayer is used as a sub layer (#7650)
+- TypeScript: fix some TS erros (#7652)
+- chore: bump loaders.gl to 3.3.1 (#7658)
+- IconManager preserve aspect ratio when auto packing (#7651)
+- Move core bundle source into src directory (#7645)
+
+#### deck.gl [8.9.0-beta.1] - Feb 15 2023
+
+- Better support for maplibre in scripting interface (#7642)
+- CollideExtension (#7375)
+- Add willReadFrequently flag to atlas creation (#7637)
+- TerrainExtension (3/3) (#7608)
+- TerrainExtension (2/3) (#7605)
+- Preparation for CollideExtension (#7625)
+- ComponentState should dereference component on finalize (#7612)
+- chore: bump loaders.gl to 3.3.0-alpha.10 (#7599)
+- Move FILTER_GL_POSITION hook (#7610)
+- TerrainExtension (1/3) (#7604)
+- chore: Reduce eslint warnings (#7583)
+- chore(geo-layers): Breakout Tileset2D (#7578)
+- FillStyleExtension leverages new default props behavior (#7569)
+- Bump loader-utils from 1.2.3 to 1.4.2 (#7561)
+- Update extension classes to leverage new default props behavior (#7563)
+- Handle defaultProps of extensions (#7513)
+- [chore] use vite to bundle examples (#7559)
+- Switch bundler to esbuild (#7546)
+- Update test harness (#7523)
+- Compare loadOptions deeply (#7507)
+- EffectManager improvements (#7515)
+- Update TileLayer documentation (#7476)
+- Use default loader to load icons (#7465)
+- Fix BitmapLayer translucency (#7441)
+- Add maskInverted prop to MaskExtension (#7440)
+- Add missing props to ClipExtension and MaskExtension (#7413)
+- Chore: Fix TS warnings (#7366)
+
+#### deck.gl [8.9.0-alpha.5] - Oct 20 2022
+
+- Support MaskExtension in FirstPersonView (#7240)
+- CARTO: Encode stats URL query value (#7319)
+- Chore: Bump loaders to 3.2.10 (#7305)
+- Font Atlas Manager: Always update the atlas with the cached version (#7337)
+- CARTO: Explicitly set geoColumn when requesting GeoJSON (#7338)
+- Display helpful error if h3 v4 is accidentally included (#7283)
+- CARTO: fetchMap disable depthTest for point layers (#7332)
+- Fix pydeck render in Google Colab (#7325)
+- Minor fix in widget-tooltip: reset value on every iteration (#7329)
+- Fix altitude projection dependence on geometry.worldPosition (#7318)
+- [pydeck-carto] fixed example for H3 strokes (#7306)
+
+#### deck.gl [8.9.0-alpha.4] - Oct 4 2022
+
+- [CARTO] Support custom markers with original colors (#7311)
+
+#### deck.gl [8.9.0-alpha.3] - Sep 27 2022
+- CARTO: Pass access token in load options (#7287)
+- Improve makeTooltip template in jupyter-widget (#7278)
+- Carto: fetchMap support for custom markers (#7250)
+- Text-Layer: Improve SDF Font Rendering (Text Outlines) (#7212)
+- CARTO: Support fields when parsing CartoVectorTiles (#7248)
+- CARTO: Tidy up binary loaders (#7194)
+- CARTO: CartoTileLayer picking coordinates correct (#7242)
+- Support dynamic functions in configuration (#7253)
+- CARTO fetchMap fix: parametrized queries are not working (#7238)
+- Use correct parameters when resizing icon atlas (#7232)
+
+#### deck.gl [8.9.0-alpha.1] - Sep 1 2022
+
+- [feat] Add a _full3d prop that uses the plane with the maximum area to tesselate (#7205)
+- [mapbox] Match base map camera when terrain is used (#7114)
+
+## deck.gl v8.8
+
+### deck.gl v8.8 Prereleases
+
+#### deck.gl [8.8.0-beta.5] - Jun 30 2022
+
+- CARTO: Handle minZoom&maxZoom in H3TileLayer (#7108)
+- CARTO: document use of spatial indices (#7107)
+- CARTO: Remove CARTO 2 for documentation (#7106)
+- CARTO - H3Tileset handles large latitude span (#7103)
+- CARTO: Add QuadbinTileLayer (#7095)
+- Add annotation to all layer classes (#7099)
+- Resolve async prop to null if fetch is undefined (#7098)
+
+#### deck.gl [8.8.0-beta.4] - Jun 27 2022
+
+- Fix arcgis integration (#7092)
+- Fix DeckGL component event root (#7091)
+- Add isInitialized flag to Deck class (#7084)
+- Fix FillStyleExtension precision (#7074)
+- GoogleMapsOverlay: Force useDevicePixels to true in interleaved mode (#7066)
+- GoogleMapsOverlay: HeatmapLayer weightsTransform uses correct clearColor (#7071)
+- CARTO: Remove deprecated `getData` function (#7063)
+- CARTO: Remove format prop from CartoLayer (#7056)
+- Add runtime check for H3 library (#7058)
+
+#### deck.gl [8.8.0-beta.3] - Jun 20 2022
+
+- Avoid mutating iconMapping value in autopacking (#7060)
+- Fix picking in non-geospatial TileLayer (#7052)
+- Do not access viewports before viewManager initialization (#7049)
+- QuadkeyTileset2D add missing metadata (#7047)
+- Add type for textureParameters (#7045)
+- [ts] Types for CartoLayer aggregation parameters (#7048)
+- Geohash layer (#6917)
+- [ts] TerrainLayer (#7044)
+- Cull TileLayer sub layers during picking (#6733)
+
+#### deck.gl [8.8.0-beta.2] - Jun 13 2022
+
+- Update defaultProps typings (#7031)
+- Add interleaved prop to MapboxOverlay (#7027)
+- [ts] Tile3DLayer (#7038)
+- Improve performance for `visible: false` layers (#7035)
+- [ts] H3 layers (#7033)
+- [ts] GreatCircleLayer (#7034)
+- [ts] MeshLayer (#6998)
+- [ts] S2Layer (#6999)
+
+#### deck.gl [8.8.0-beta.1] - Jun 10 2022
+
+- [ts] react module (#7016)
+- [ts] extensions module (#7015)
+- [ts] LayerExtension (#7014)
+- Bump dependencies to production versions (#7018)
+- [ts] shader modules (#6984)
+- [ts] main: re-export recently added typings (#7012)
+- [ts] TripsLayer (#6997)
+- [ts] ScreenGridLayer & utils (#7002)
+- [ts] HeatmapLayer & utils (#7003)
+- [ts] modules/layers leftovers (#7010)
+- [ts] LineLayer (#7008)
+- [ts] PointCloudLayer (#7009)
+- [ts] ColumnLayer & GridCellLayer (#7007)
+- [ts] GridLayer & friends (#7004)
+- [ts] BitmapLayer (#7006)
+- [ts] ContourLayer & deps (#7001)
+- [ts] ArcLayer (#7005)
+- [ts] HexagonLayer & deps (#7000)
+- Improve default Layer type (#6992)
+
+#### deck.gl [8.8.0-alpha.6] - Jun 6 2022
+
+- Bump devcert from 1.1.3 to 1.2.1 in /website (#6983)
+- chore: upgrade @loaders.gl version (#6968)
+- [ts] TextLayer (#6976)
+- [ts] Tooltip (#6980)
+- [ts] ResourceManager (#6978)
+- Fix HeatmapLayer on iOS (#6988)
+- [ts] Effects (#6982)
+- Export CartoLayerLibrary in carto module for pydeck integration (#6866)
+- Fix regression in DeckGL React component not syncing base map (#6977)
+- [ts] Carto spatial index layers (#6971)
+- [ts] Core utilities (#6979)
+- [ts] PathLayer and SolidPolygonLayer (#6974)
+- [ts] Tesselators (#6973)
+- [ts] IconLayer (#6962)
+- Bump eventsource from 1.0.7 to 1.1.1 (#6964)
+- [ts] ScatterplotLayerProps documentation (#6963)
+- [ts] Fix prop types of Polygon, GeoCell and Quadkey layers. (#6965)
+
+#### deck.gl [8.8.0-alpha.5] - Jun 1 2022
+
+- [ts] CartoTileLayer and utilities (#6891)
+- [ts] mesh layers (#6956)
+- [ts] Tile2DHeader generic (#6889)
+- [ts] mapbox module (#6957)
+- [ts] MVTLayer (#6842)
+- [ts] Deck class (#6947)
+- Add optional types entry point (#6946)
+- [ts] Handle nullable layer members in layer code (#6932)
+- Create separate basemap docs by provider (#6294)
+- [ts] GeoJsonLayer (#6940)
+- CARTO: fix spatial index H3tileLayer id (#6945,#6937)
+- chore(luma.gl): bump version to 8.5.12 (#6914)
+- Remove layer-specific logic from Component class (#6933)
+- Fix typo in mapbox access token (#6939)
+
+#### deck.gl [8.8.0-alpha.4] - May 20 2022
+
+- CARTO: Fix autohighlighting in spatial index tile layers (#6928)
+- [mapbox] restrict longitude returned by map.getCenter() (#6929)
+- CARTO: CartoLayer overzooming for H3 and Quadkey based on maxresolution (#6926)
+- CARTO: Default aggregationResLevel (#6922)
+
+#### deck.gl [8.8.0-alpha.3] - May 18 2022
+
+- CARTO: fetchMap stroke opacity correctly applied (#6911)
+- CARTO: Support H3TileLayer in CartoLayer (#6915)
+- CARTO: Support QuadkeyTileLayer in CartoLayer (#6913)
+- [ts] QuadkeyLayer and GeoCellLayer translated to typescript. (#6822)
+- Base Layer type signature (#6847)
+- [google-maps] More robust offset calculation (#6903)
+- CARTO: fix getColorWeight and apply transparent color to null values when using a ramp (#6905)
+
+#### deck.gl [8.8.0-alpha.2] - Feb 24 2022
+
+- Fix crash in getURLFromTemplate (#6898)
+- Additional user metadata in `Tile2DHeader` to be used by `getTileData` (#6867)
+- Bump @loaders.gl from 3.2.0-alpha.2 to 3.2.0-alpha.4 (#6881)
+- Add view parameter to offset center (#6672)
+- Expose Generic Tileset2D class for use with TileLayer (#6848)
+- [ts] TileLayer (#6841)
+- CARTO: Do not send schema to CARTO API (#6868)
+- CARTO: fetchLayerData add support for aggregation parameters (#6864)
+- feat(geo-layers): Tile3DLayers-async tileset traversal (#6856)
+- Remove non-existent param from function doc in polygon.js (#6840)
+- Bump @loaders.gl from 3.1.5 to 3.2.0-alpha.2 (#6829)
+- [ts] GoogleMapsOverlay converted to Typescript. (#6835)
+- [ts] ScatterplotLayer (#6803)
+- CartoLayer converted to typescript (#6821)
+- Update TypeScript build setup (#6802)
+- Migrate Layer class to TypeScript (#6779)
+- Migrate core/picking to TypeScript (#6776)
+- [mapbox] add MapboxOverlay (#6738)
+- TypeScript: views & viewports (#6725)
+- TypeScript: attributes (#6710)
+- TypeScript: controllers & transitions (#6708)
+
+## deck.gl v8.7
+
+### deck.gl v8.7 Prereleases
+
+#### deck.gl [8.7.0-beta.7] - Feb 24 2022
+
+- CARTO: Fix formatTiles propagation at CartoLayer (#6687)
+- Add QuadkeyLayer (#6678)
+- [mapbox] Fix event handling when using external deck (#6671)
+- Fix math.gl deprecation warning (#6670)
+- Doc: Correct links to all extensions (#6680)
+- CartoTileLayer: Default formatTiles to binary (#6668)
+- Ignore dataComparator change in props diff (#6669)
+- fix(mapbox) leave additional views intact (#6329)
+- fix(tets): include Typescript sources in test coverage (#6663)
+
+#### deck.gl [8.7.0-beta.6] - Feb 21 2022
+- CARTO: Rename CartoDynamicTileLayer -> CartoTileLayer (#6658)
+- GeoJsonLayer[binary]: do not pass instancePickingColors attribute to TextLayer (#6650)
+- Support tilt & bearing for Google raster maps (#6653)
+
+#### deck.gl [8.7.0-beta.5] - Feb 10 2022
+
+- CARTO: fetchMap supports tiles in different formats (#6637)
+- CARTO: Simplify format tiles logic (#6635)
+- Carto: Allow private maps in fetchMap (#6629)
+- Change highlightedObjectIndex default to null (#6631)
+#### deck.gl [8.7.0-beta.4] - Feb 7 2022
+
+- Include extensions sent in properties in the CartoDynamicTileLayer
+- Support TILE_FORMATS.BINARY in CartoDynamicTileLayer (#6580)
+#### deck.gl [8.7.0-beta.3] - Feb 2 2022
+
+- CARTO module: Support tiles in different formats (#6609)
+- Fix OrthographicController drift when using independent scales(#6606)
+#### deck.gl [8.7.0-beta.2] - Feb 1 2022
+
+- Respect mask coordinate system & origin (#6591)
+- CARTO fetchMap: Fix h3 hexagon layers are not shown (#6596)
+- Create unique MaskEffect per EffectManager (#6595)
+- Fix OrthographicView projection when using independent scales (#6604)
+- Fix `update` Behavior in `Tileset2D` (#6602)
+- Fix depth picking accuracy (#6600)
+- MapboxLayer only repeats if the base map renders multiple copies (#6594)
+- Allow setting FontAtlasManager LRU Cache limit (#6576)
+- Support multiple masks (#6589)
+
+#### deck.gl [8.7.0-beta.1] - Jan 26 2022
+
+- Add MaskExtension (#6554)
+- Add getBounds method to Attribute (#6583)
+- Update to new Google Maps API (#6579)
+- CARTO fetchMap:  Fix no layer shown if one of the map layers fails (#6573)
+- Add uniqueIdProperty to mvt layer props (#6572)
+- Fix fetchMap in Carto module (#6569)
+- Migrate core/passes to TypeScript (#6488)
+- Fix TileLayer url template resolution (#6566)
+- Fix z-index of MapboxLayers (#6565)
+- Fix highlighting in GeoJsonLayer when it’s used as a sub layer (#6563)
+- Correctly calculate GLViewport with Framebuffer (#6553)
+
+#### deck.gl [8.7.0-alpha.11] - Dec 30 2021
+
+- CARTO - add clientId parameter for internal tracing (#6534)
+
+#### deck.gl [8.7.0-alpha.10] - Dec 28 2021
+
+- CARTO - add clientId parameter for internal tracing (#6534)
+
+#### deck.gl [8.7.0-alpha.9] - Dec 17 2021
+
+- CartoLayer support for dynamic tiled maps (geojson) (#6509)
+- Bump loaders to 3.1.3 (#6511)
+
+#### deck.gl [8.7.0-alpha.8] - Dec 13 2021
+
+- Supply attributes directly in binary GeoJson layer (#6492)
+
+#### deck.gl [8.7.0-alpha.7] - Dec 9 2021
+
+- Fix pre-built dev bundles (#6499)
+- Fix pre-built bundles (#6498)
+
+#### deck.gl [8.7.0-alpha.4] - Dec 9 2021
+
+- TileLayer: reduce flashing when using no-overlap strategy (#6477)
+- feat(geo): controller position (#6478)
+- chore: Bump to loaders.gl@3.1.0 (#6484)
+- chore(core): Move utils to .ts (#6452)
+- CARTO: Fix domain length for CartoColors in colorBins  (#6475)
+- Migrate core/lifecycle to TypeScript (#6454)
+- feat(geo-layers): Tile3DLayer pass coordinateSystem as prop (#6466)
+- Fix project_normal in GlobeView (#6445)
+- Add flatShading prop to ColumnLayer (#6392)
+- TerrainLayer handle non-WebMercator viewports (#6461)
+- colorContinuous - Use domain length to get palette (#6447)
+- fix(geo-layers): _MeshLayer & repeating textures (#6468)
+- TileLayer support custom refinementStrategy (#6382)
+- chore: Move to @math.gl/core (#6405)
+- chore: Lint fixes (#6443)
+- chore: Move controllers to .ts (#6440)
+- chore: loaders.gl@3.1.0-beta.5 (#6388)
+- feat: Typescript monorepo (#6381)
+- chore: Replace `global` with `globalThis` (#6407)
+- feat: Upgrade tooling to support TypeScript (#6390)
+
+#### deck.gl [8.7.0-alpha.3] - Nov 25 2021
+
+- Fix: Rename publicToken to token (#6425)
+- Fix: CartoLayer support `format` prop (#6416)
+- Default to `cartodb_id` for uniqueIdProperty in CartoLayer (#6404)
+- Deprecate CartoBQTilerLayer and CartoSQLLayer (#6402)
+
+#### deck.gl [8.7.0-alpha.2] - Nov 16 2021
+- Bump prettier to v2 (#6386)
+- CARTO default to v3 API (#6376)
+- Fix multi-depth picking with layerFilter (#6380)
+
+#### deck.gl [8.7.0-alpha.1] - Nov 8 2021
+- Add missing prop mappings for GeoJsonLayer (#6336)
+- Add `fetchMap` function to carto module (#6341)
+- CARTO: fix layer credentials overwrite (#6349)
+- Skip rendering out-of-DOM Google Maps (#6340)
+- pydeck: Bump version to 0.7.1 (#6322)
+- Multi-view picking consistency (#6306)
+
+## deck.gl v8.6
+
+### deck.gl v8.6 Prereleases
+
+#### deck.gl [8.6.0-beta.1] - Oct 9 2021
+
+- Default to binary mode in MVTLayer (#6282)
+
+#### deck.gl [8.6.0-alpha.4] - Oct 6 2021
+
+- Google Maps Overlay: Safely invoke onRender by resetting arrayBuffer (#6224)
+- Bump luma to 8.5.10 (#6267)
+- Update HexagonLayer to use the new unit system (#6260)
+- Use accurate meter size in Web Mercator projection (#6117)
+- Improve picking index encoding (#6184)
+- H3HexagonLayer: force low precision; early exit for data analysis loop (#6242)
+- TileLayer retains cache on data change (#6194)
+- Fix excessive allocation for constant attributes (#6233)
+- Fix Heatmap data update (#6231)
+- Fix diffProps when an async prop is set synchronously (#6193)
+- Fix TileLayer getTileData not using the latest loadOptions (#6209)
+- Fix missing picking radius for onClick handlers (#6208)
+- Check visible recursively (#6190)
+- TileLayer uses props.extent to cull tiles in geospatial mode (#6191)
+- Use layerFilter in MapboxLayer (#6189)
+#### deck.gl [8.6.0-alpha.3] - Sep 9 2021
+
+- Improve shader projection in auto offset mode (#6161)
+- Google overlay state synchronization (#6177)
+
+#### deck.gl [8.6.0-alpha.2] - Sep 6 2021
+
+- Drop sublayers with no data even if the _subLayerProps prop contains (#6160)
+- Heatmap - expose additional properties (#6158)
+- pydeck: Enable custom_map_style and file encoding for HTML on Windows (#6121)
+- Additional reference points for bounding volume calculation - globe view (#6148)
+- CARTO: include API error at the exception message (#6143)
+- Bump luma.gl to 8.5.5 (#6132)
+- Fix Default Values in `AttributeManager` `add` method (#6130)
+- Fix TileLayer and Tile3DLayer visiblility (#6123)
+- Add geoColumn & columns props to CartoLayer (#6097)
+- Bug fixes in google overlay (#6083)
+- OrthographicView supports independent x/y zoom levels (#6116)
+- Only call layerFilter with top-level layers (#6049)
+- Add zero _offset to Tile3DLayer (#6108)
+- Fix MVTLayer autoHighlight with binary data (#6098)
+- Improve tile traversal in GlobeView (#6106)
+- Bump loaders to 3.0.8 (#6075)
+- Scatterplot layer: smooth edges prop (#6081)
+
+#### deck.gl [8.6.0-alpha.1] - Aug 9 2021
+
+- Support vector maps in google module (#5981)
+- Check for correct layerName when highlighting in MVTLayer (#6062)
 
 ### deck.gl v8.5 Prereleases
+
+#### deck.gl [8.5.0-beta.2] - Jul 20 2021
+
+- Avoid onError call if context is lost after finalization (#5992)
+- Bump math.gl to 3.5.3 (#5994)
+- Binary MVTLayer returns geometry when picking (#5965)
+- Bump dependencies (#5990)
+- Provide default skirt height for tiled TerrainLayer (#5982)
+- Bump loaders.gl to 3.0.2, luma.gl to 8.5.0 (#5979)
+- Bump math.gl to 3.5.1 (#5972)
+- Billboard prop for Scatterplot layer (#5956)
+- Enforce OrbitView orbitAxis prop (#5962)
+- Add `fadeTrail` prop to TripLayer (#5921)
+
+#### deck.gl [8.5.0-beta.1] - Jul 5 2021
+
+- Bump dependencies (#5951)
+- MVTLayer and TerrainLayer switch to use worker-only loaders (#5946)
+- update bundle config (#5949)
+- Bump loaders to 3.0.0-beta.6 (#5943)
+- MVTLayer use all loaders (#5934)
+- CARTO module: bearer token always in header (#5933)
+- TileLayer: add zoomOffset prop  (#5896)
+- Don't Use `tileSize` for Determining `z` of Tile Indexing in InfoVis (#5895)
+- CARTO module: rename code from cloud-native to carto3 (#5932)
+- tile-3d: update with new loaders version (#5920)
+- Fix: Initialize mapsUrl in cloud native (#5868)
+- Upgrade ocular-dev-tools (#5910)
+
+#### deck.gl [8.5.0-alpha.11] - Jun 21 2021
+
+- Fix: CARTO module WebGL invalid value for table (#5894)
+- TextLayer supports characterSet:auto (#5889)
+- Bump @loaders.gl to 3.0.0-alpha.21 (#5879)
+- Correct data.length for MVTLayer polygons (#5853)
+
+#### deck.gl [8.5.0-alpha.10] - Jun 11 2021
+
+- Support pointType prop to allow changing point rendering in GeoJsonLayer (#5835)
+- geo: tile-3d viewport filter (#5866)
+- Consolidate and document fetch prop (#5854)
+
+#### deck.gl [8.5.0-alpha.9] - Jun 9 2021
+
+- CARTO cloud native integration (#5859)
+- Fix inconsistent path layer id in GeoJSONLayer (#5855)
+- Tile3DLayer: multiple viewports (#5758)
+- Tile3DLayer: segmentation picking (#5757)
+- Fix event order when dynamically add/remove controllers (#5852)
+- Fix heatmap colorDomain (#5846)
+
+#### deck.gl [8.5.0-alpha.8] - Jun 5 2021
+
+- Pass through loadOptions and AbortSignal to MVTLayer & TerrainLayer (#5837)
+- Refactor OrbitController (#5825)
+- Allow CompositeLayer to filter sub layers during redraw (#5820)
+- Add getTilerColor method to tile-3d-layer (#5814)
+- Refactor linear transition in controllers (#5824)
+- i3s: support vertex colors (#5756)
+- i3s: support uvRegions (#5760)
+- Fix heatmap colorDomain (#5802)
+- feat(geo-layers): Private MeshLayer with pbr material support (I3S) (#5761)
+
+#### deck.gl [8.5.0-alpha.7] - May 25 2021
+
+- geo: i3s - support indices (#5807)
+- Bump @loaders.gl to 3.0.0-alpha.16 to pick up earcut migration to math.gl (#5805)
+- Set default of MVTLayer binary to true (#5800)
+- Fix size projection in billboard mode (#5798)
+
+#### deck.gl [8.5.0-alpha.6] - May 17 2021
+
+- Bump @loaders.gl to 3.0.0-alpha.14 (#5780)
+- Tile3DLayer: Ability to override color per tile (#5759)
+- Support local-math env option (#5737)
+
+#### deck.gl [8.5.0-alpha.5] - May 10 2021
+
+- Do not log init message unless log priority set to 1 (#5718)
+- Normalize viewState on MapController initialization + add normalize flag (#5727)
+- Move ClipExtension to @deck.gl/extensions (#5726)
+- Add onError to Layer props (#5732)
+- Invoke onError when GL context is lost (#5731)
+- Clean up Deck's internal method bindings (#5730)
+- Update onError callback default (#5702)
+- Support triangulation of polygons for MVTLoader in loaders.gl (#5712)
+- Revert "[feat] WebGL context lost handling > pass to listeners of onError (#5399)" (#5604)
+
+#### deck.gl [8.5.0-alpha.4] - Mar 22 2021
+
+[feat] WebGL context lost handling > pass to listeners of on
+Error (#5399)
 
 #### deck.gl [8.5.0-alpha.3] - Feb 25 2021
 
@@ -2481,13 +3730,13 @@ For Earlier Beta Releases see below
 
 ### deck.gl v4.2 Beta Releases
 
-#### [4.2.0-alpha.31] - Dec 14
+#### [4.2.0-alpha.32] - Dec 14
 - API Audit: remove initWebGLParameters and move pure-js example  (#1235)
 - Fix for invalid triggerName in attribute-manager.invalidate(triggerName) function (#1238)
 - Add polygonLayer geojsonLayer elevationScale prop to whats-new.md (#1237)
 - OrbitController pure-js support (#1234)
 
-#### [4.2.0-alpha.30] - Dec 12
+#### [4.2.0-alpha.32] - Dec 12
 - DOCS: updates to clarify what is experimental in 4.2, in "What's New" and "API Reference".
 - DOCS: New Roadmap doc, linking to RFCs.
 - DOCS: List experimental 4.2 features in Roadmap doc.

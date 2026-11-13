@@ -1,0 +1,239 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect} from 'vitest';
+
+import {
+  WebMercatorViewport,
+  FirstPersonViewport,
+  OrthographicViewport,
+  project,
+  ProjectProps
+} from '@deck.gl/core';
+import {fp64} from '@luma.gl/shaders';
+const {fp64LowPart} = fp64;
+import {projectPosition} from './project-glsl-test-utils';
+import {equals, config, NumberArray3} from '@math.gl/core';
+import {runOnGPU, TestProps, testUniforms, verifyGPUResult} from './project-glsl-test-utils';
+import {device} from '@deck.gl/test-utils/vitest';
+
+const TEST_VIEWPORT = new WebMercatorViewport({
+  longitude: -122.45,
+  latitude: 37.78,
+  zoom: 14
+});
+const TEST_VIEWPORT_2 = new WebMercatorViewport({
+  longitude: -70.1,
+  latitude: 40.7,
+  zoom: 8
+});
+const TEST_COORDINATE_ORIGIN: NumberArray3 = [-122.45, 37.78, 0];
+const webglTest = device.type === 'webgl' ? test : test.skip;
+
+export type TestCase = {
+  title: string;
+  position: NumberArray3;
+  projectProps: ProjectProps;
+  result: NumberArray3;
+};
+const TEST_CASES: TestCase[] = [
+  {
+    title: 'WGS84 alias applies source origin before GPU projection',
+    position: [-0.01, 0.02, 1000],
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'EPSG:4326',
+      coordinateOrigin: TEST_COORDINATE_ORIGIN
+    },
+    result: [-0.014226562499999318, 0.03599588695612965, 0.016187212628251565]
+  },
+  {
+    title: 'LNGLAT:WEB_MERCATOR',
+    position: [-70, 41, 1000],
+    projectProps: {
+      viewport: TEST_VIEWPORT_2,
+      coordinateSystem: 'default'
+    },
+    result: [156.44444444444446, 320.0378755678335, 0.01694745572307248]
+  },
+  {
+    title: 'LNGLAT:WEB_MERCATOR_AUTO_OFFSET',
+    position: [-122.46, 37.8, 1000],
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'default'
+    },
+    result: [-0.014226562499999318, 0.03599588695612965, 0.016187212628251565]
+  },
+  {
+    title: 'CARTESIAN:IDENTITY',
+    position: [-10, 10, 10],
+    projectProps: {
+      viewport: new OrthographicViewport({
+        width: 1,
+        height: 1,
+        target: [3.1416, 2.7183, 0],
+        zoom: 4
+      }),
+      coordinateSystem: 'default'
+    },
+    result: [-13.1416, 7.2817, 10]
+  },
+  {
+    title: 'CARTESIAN:WEB_MERCATOR',
+    position: [256, 256, 0],
+    projectProps: {
+      viewport: TEST_VIEWPORT_2,
+      coordinateSystem: 'cartesian',
+      coordinateOrigin: [0, 0, 0]
+    },
+    result: [256, 256, 0]
+  },
+  {
+    title: 'CARTESIAN:WEB_MERCATOR_AUTO_OFFSET',
+    position: [0, 0, 0],
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'cartesian',
+      coordinateOrigin: [256, 256, 0]
+    },
+    result: [174.15110778808594, -58.11044311523443, 0]
+  },
+  {
+    title: 'LNGLAT_OFFSETS',
+    position: [-0.05, 0.06, 50],
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'lnglat-offsets',
+      coordinateOrigin: [-122.5, 38.8, 0]
+    },
+    result: [-0.07111111111110802, 0.10954078583623073, 0.0008212863345433337]
+  },
+  {
+    title: 'METER_OFFSETS',
+    position: [-100, 300, 50],
+    projectProps: {
+      viewport: TEST_VIEWPORT,
+      coordinateSystem: 'meter-offsets',
+      coordinateOrigin: [-122.5, 38.8, 0]
+    },
+    result: [-0.0016412509100689476, 0.00492356632304336, 0.0008206254565218747]
+  }
+];
+
+// First-person cameras retain Mercator shader coordinates without CPU preprojection.
+const firstPersonViewport = new FirstPersonViewport({
+  longitude: TEST_COORDINATE_ORIGIN[0],
+  latitude: TEST_COORDINATE_ORIGIN[1],
+  position: [10, 20, 100]
+});
+const mercatorReference = new WebMercatorViewport({
+  longitude: TEST_COORDINATE_ORIGIN[0],
+  latitude: TEST_COORDINATE_ORIGIN[1],
+  zoom: firstPersonViewport.zoom,
+  position: [10, 20, 100],
+  legacyMeterSizes: true
+});
+for (const coordinateSystem of [
+  'default',
+  'lnglat-offsets',
+  'meter-offsets',
+  'cartesian'
+] as const) {
+  const position: NumberArray3 =
+    coordinateSystem === 'default'
+      ? ([...TEST_COORDINATE_ORIGIN.slice(0, 2), 100] as NumberArray3)
+      : [0, 0, coordinateSystem === 'cartesian' ? 0 : 100];
+  const coordinateOrigin: NumberArray3 =
+    coordinateSystem === 'default'
+      ? [0, 0, 0]
+      : coordinateSystem === 'cartesian'
+        ? [...firstPersonViewport.projectFlat(TEST_COORDINATE_ORIGIN), 0]
+        : TEST_COORDINATE_ORIGIN;
+  TEST_CASES.push({
+    title: `FirstPersonViewport:${coordinateSystem}`,
+    position,
+    projectProps: {viewport: firstPersonViewport, coordinateSystem, coordinateOrigin},
+    result: projectPosition(position, {
+      viewport: mercatorReference,
+      coordinateSystem,
+      coordinateOrigin
+    })
+  });
+}
+
+test('project#projectPosition', () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = 1e-7;
+
+  try {
+    TEST_CASES.forEach(testCase => {
+      const result = projectPosition(testCase.position, testCase.projectProps);
+      expect(equals(result, testCase.result), testCase.title).toBeTruthy();
+    });
+  } finally {
+    config.EPSILON = oldEpsilon;
+  }
+});
+
+test('project#projectPosition rejects legacy numeric coordinate systems', () => {
+  expect(
+    () =>
+      projectPosition([-122.46, 37.8, 1000], {
+        viewport: TEST_VIEWPORT,
+        coordinateSystem: 2 as never,
+        coordinateOrigin: TEST_COORDINATE_ORIGIN
+      }),
+    'Legacy numeric coordinate systems are rejected'
+  ).toThrow(/Invalid coordinateSystem/);
+
+  const identityResult = projectPosition([0, 0, 0], {
+    viewport: TEST_VIEWPORT,
+    coordinateSystem: 'cartesian',
+    coordinateOrigin: [256, 256, 0]
+  });
+
+  expect(
+    equals(identityResult, [174.15110778808594, -58.11044311523443, 0]),
+    'IDENTITY aliases cartesian behavior'
+  ).toBeTruthy();
+});
+
+webglTest('project#projectPosition vs project_position', async () => {
+  const oldEpsilon = config.EPSILON;
+  config.EPSILON = 1e-5;
+
+  const vs = `\
+#version 300 es
+
+out vec4 outValue;
+
+void main()
+{
+  geometry.worldPosition = test.uPos;
+  outValue = project_position(vec4(test.uPos, 1.0), test.uPos64Low);
+}
+`;
+
+  try {
+    for (const {title, position, projectProps} of TEST_CASES) {
+      const cpuResult = projectPosition(position, projectProps);
+      const testProps: TestProps = {
+        uPos: position,
+        uPos64Low: position.map(fp64LowPart) as NumberArray3
+      };
+      const shaderResult = await runOnGPU({
+        vs,
+        varying: 'outValue',
+        modules: [project, testUniforms],
+        vertexCount: 1,
+        shaderInputProps: {project: projectProps, test: testProps}
+      });
+
+      expect(verifyGPUResult(shaderResult, cpuResult), title).toBe(true);
+    }
+  } finally {
+    config.EPSILON = oldEpsilon;
+  }
+});

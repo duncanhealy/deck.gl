@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import {
   ScatterplotLayer,
   ArcLayer,
@@ -54,9 +58,16 @@ const ArcLayerExample = {
 const IconLayerExample = {
   layer: IconLayer,
   getData: () => dataSamples.points,
+  propTypes: {
+    sizeBasis: {
+      type: 'category',
+      value: ['height', 'width']
+    }
+  },
   props: {
     iconAtlas: 'data/icon-atlas.png',
     iconMapping: dataSamples.iconAtlas,
+    sizeBasis: 'height',
     sizeScale: 24,
     getPosition: d => d.COORDINATES,
     getColor: d => [64, 64, 72],
@@ -117,7 +128,7 @@ const GeoJsonLayerExample = {
   },
   props: {
     id: 'geojsonLayer',
-    getRadius: f => MARKER_SIZE_MAP[f.properties['marker-size']],
+    getPointRadius: f => MARKER_SIZE_MAP[f.properties['marker-size']],
     getFillColor: f => {
       const color = parseColor(f.properties.fill || f.properties['marker-color']);
       const opacity = (f.properties['fill-opacity'] || 1) * 255;
@@ -135,6 +146,7 @@ const GeoJsonLayerExample = {
     lineWidthMinPixels: 1,
     pickable: true,
     dashJustified: true,
+    dashGapPickable: true,
     extensions: [new PathStyleExtension({dash: true})]
   }
 };
@@ -188,6 +200,11 @@ const PolygonLayerBinaryExample = {
       // Convert each polygon from an array of points to an array of numbers
       return flattenVertices(polygon, {dimensions: 2});
     }),
+  propTypes: {
+    ...PolygonLayerExample.propTypes,
+    fillPatternSizeUnits: {type: 'category', value: ['meters', 'pixels']},
+    getFillPatternScale: {type: 'number', max: 3}
+  },
   props: {
     ...PolygonLayerExample.props,
     getPolygon: d => d,
@@ -198,7 +215,9 @@ const PolygonLayerBinaryExample = {
     getFillPattern: f =>
       ['hatch-1x', 'hatch-2x', 'hatch-cross', 'dots'][Math.floor(Math.random() * 4)],
     getFillPatternOffset: [0, 0],
-    getFillPatternScale: 5,
+    getFillPatternScale: 3,
+    fillPatternSizeUnits: 'meters',
+    getFillPatternBackgroundColor: [220, 220, 220, 200],
     extensions: [new FillStyleExtension({pattern: true})]
   }
 };
@@ -267,12 +286,22 @@ const ScatterplotLayerExample = {
 
 const ColumnLayerExample = {
   layer: ColumnLayer,
+  propTypes: {
+    radiusUnits: {type: 'compound', elements: ['radiusUnitsPixels']},
+    radiusUnitsPixels: {
+      type: 'boolean',
+      onUpdate: (newValue, newSettings, change) => {
+        change('radiusUnits', newValue ? 'pixels' : 'meters');
+      }
+    }
+  },
   props: {
     id: 'columnLayer',
     data: dataSamples.worldGrid.data,
     extruded: true,
     pickable: true,
     radius: 100,
+    radiusUnits: 'meters',
     opacity: 1,
     getFillColor: d => [245, 166, d.value * 255, 255],
     getElevation: d => d.value * 5000
@@ -377,7 +406,7 @@ const TextLayerExample = {
     maxWidth: {
       name: 'maxWidth',
       type: 'number',
-      max: 5000
+      max: 100
     },
     backgroundPadding: {type: 'compound', elements: ['padding']},
     padding: {
@@ -386,16 +415,32 @@ const TextLayerExample = {
       onUpdate: (newValue, newSettings, change) => {
         change('backgroundPadding', [newValue, newValue]);
       }
+    },
+    backgroundBorderRadius: {type: 'compound', elements: ['borderRadius']},
+    borderRadius: {
+      type: 'number',
+      min: 0,
+      max: 100,
+      onUpdate: (newValue, newSettings, change) => {
+        change('backgroundBorderRadius', newValue);
+      }
     }
   },
   props: {
     id: 'textgetAnchorX-layer',
     sizeScale: 1,
     fontFamily: 'Monaco',
-    fontSettings: {},
+    fontSettings: {
+      sdf: false,
+      fontSize: 64,
+      buffer: 16,
+      radius: 12,
+      cutoff: 0.25,
+      smoothing: 0.1
+    },
     autoHighlight: true,
     pickable: true,
-    maxWidth: 500,
+    maxWidth: 50,
     wordBreak: 'break-word',
     highlightColor: [0, 0, 128, 128],
     getText: x => `${x.LOCATION_NAME}\n${x.ADDRESS}`,

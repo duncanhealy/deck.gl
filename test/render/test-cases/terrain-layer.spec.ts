@@ -1,0 +1,167 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {describe} from 'vitest';
+import {runRenderTestSuite} from '../render-test-suite';
+import type {TestCase} from '../deck-test-utils';
+
+import {_GlobeView as GlobeView} from '@deck.gl/core';
+import {GeoJsonLayer, IconLayer} from '@deck.gl/layers';
+import {TerrainLayer} from '@deck.gl/geo-layers';
+import {_TerrainExtension as TerrainExtension} from '@deck.gl/extensions';
+
+import {points, choropleths, iconAtlas as iconMapping} from 'deck.gl-test/data';
+
+const ELEVATION_DATA = '/test/data/terrain-tiles/{z}/{x}/{y}.png';
+const TEXTURE = '/test/data/raster-tiles/{z}/{x}/{y}.png';
+// https://www.mapzen.com/blog/terrain-tile-service/
+// Exageration added for testing purpose
+const DECODER = {
+  rScaler: 256 * 4,
+  gScaler: 1 * 4,
+  bScaler: (1 / 256) * 4,
+  offset: -32768 * 4
+};
+
+function waitAfterDefaultCompletion(waitMs = 0) {
+  let doneScheduled = false;
+
+  return ({deck, layers, done}) => {
+    // Match the shared render test readiness check, then allow the terrain
+    // extension path one extra settle window before capturing.
+    // @ts-expect-error Accessing protected layerManager in test code
+    const needsUpdate = deck.layerManager?.needsUpdate();
+    const allLoaded = layers.every(layer => layer.isLoaded);
+
+    if (!needsUpdate && allLoaded && !doneScheduled) {
+      doneScheduled = true;
+      if (waitMs > 0) {
+        setTimeout(done, waitMs);
+      } else {
+        done();
+      }
+    }
+  };
+}
+
+const testCases = [
+  {
+    name: 'terrain-layer',
+    viewState: {
+      longitude: -122.45,
+      latitude: 37.75,
+      zoom: 11.5,
+      pitch: 60,
+      bearing: 0
+    },
+    layers: [
+      new TerrainLayer({
+        elevationData: ELEVATION_DATA,
+        texture: TEXTURE,
+        elevationDecoder: DECODER
+      })
+    ],
+    goldenImage: './test/render/golden-images/terrain-layer.png'
+  },
+  {
+    name: 'terrain-extension-drape',
+    skip: ['webgpu'],
+    viewState: {
+      longitude: -122.45,
+      latitude: 37.75,
+      zoom: 11.5,
+      pitch: 60,
+      bearing: 0
+    },
+    layers: [
+      new TerrainLayer({
+        elevationData: ELEVATION_DATA,
+        texture: TEXTURE,
+        elevationDecoder: DECODER,
+        operation: 'draw+terrain'
+      }),
+      new GeoJsonLayer({
+        data: choropleths,
+        getLineWidth: 50,
+        getFillColor: (_, {index}) => [(index % 3) * 80, (index % 2) * 128, 128, 200],
+        extensions: [new TerrainExtension()]
+      })
+    ],
+    goldenImage: './test/render/golden-images/terrain-extension-drape.png'
+  },
+  {
+    // terrain-extension-drape in GlobeView, without outlines.
+    // Golden: the same choropleth fills draped over the terrain, on the globe.
+    // No stroke: a draped PathLayer on GlobeView re-tessellates every frame, so the screenshot
+    // never settles.
+    name: 'terrain-extension-drape-fill-globe',
+    skip: ['webgpu'],
+    views: new GlobeView({resolution: 36}),
+    viewState: {
+      longitude: -122.45,
+      latitude: 37.75,
+      zoom: 11.5,
+      pitch: 60,
+      bearing: 0
+    },
+    layers: [
+      new TerrainLayer({
+        elevationData: ELEVATION_DATA,
+        texture: TEXTURE,
+        elevationDecoder: DECODER,
+        operation: 'draw+terrain'
+      }),
+      new GeoJsonLayer({
+        data: choropleths,
+        stroked: false,
+        getFillColor: (_, {index}) => [(index % 3) * 80, (index % 2) * 128, 128, 200],
+        extensions: [new TerrainExtension()]
+      })
+    ],
+    onAfterRender: waitAfterDefaultCompletion(500),
+    imageDiffOptions: {threshold: 0.985},
+    goldenImage: './test/render/golden-images/terrain-extension-drape-fill-globe.png'
+  },
+  {
+    name: 'terrain-extension-offset',
+    skip: ['webgpu'],
+    viewState: {
+      longitude: -122.45,
+      latitude: 37.75,
+      zoom: 11.5,
+      pitch: 60,
+      bearing: 0
+    },
+    layers: [
+      new TerrainLayer({
+        elevationData: ELEVATION_DATA,
+        texture: TEXTURE,
+        elevationDecoder: DECODER,
+        operation: 'terrain'
+      }),
+      new GeoJsonLayer({
+        data: choropleths,
+        getLineWidth: 50,
+        getFillColor: (_, {index}) => [(index % 3) * 60 + 60, (index % 2) * 64 + 128, 200],
+        extensions: [new TerrainExtension()]
+      }),
+      new IconLayer({
+        data: points,
+        iconAtlas: '/test/data/icon-atlas.png',
+        iconMapping,
+        sizeScale: 12,
+        getPosition: d => d.COORDINATES,
+        getIcon: d => 'marker-warning',
+        getSize: d => (d.PLACEMENT === 'SW' ? 0 : 2),
+        extensions: [new TerrainExtension()]
+      })
+    ],
+    onAfterRender: waitAfterDefaultCompletion(1000),
+    goldenImage: './test/render/golden-images/terrain-extension-offset.png'
+  }
+];
+
+describe.each(['webgl', 'webgpu'] as const)('%s', deviceType => {
+  runRenderTestSuite(testCases as TestCase[], deviceType);
+});

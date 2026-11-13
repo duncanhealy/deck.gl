@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 import {Deck, _GlobeView as GlobeView} from '@deck.gl/core';
 import {SolidPolygonLayer, GeoJsonLayer, ArcLayer} from '@deck.gl/layers';
 
@@ -13,7 +17,7 @@ const INITIAL_VIEW_STATE = {
   zoom: 0
 };
 
-export const deck = new Deck({
+new Deck({
   views: new GlobeView(),
   initialViewState: INITIAL_VIEW_STATE,
   controller: true,
@@ -23,7 +27,7 @@ export const deck = new Deck({
     new SolidPolygonLayer({
       id: 'background',
       data: [
-        // prettier-ignore
+        // biome-ignore format: preserve layout
         [[-180, 90], [0, 90], [180, 90], [180, -90], [0, -90], [-180, -90]]
       ],
       opacity: 0.5,
@@ -49,7 +53,7 @@ export const deck = new Deck({
       filled: true,
       pointRadiusMinPixels: 2,
       pointRadiusScale: 2000,
-      getRadius: f => 11 - f.properties.scalerank,
+      getPointRadius: f => 11 - f.properties.scalerank,
       getFillColor: [200, 0, 80, 180],
       // Interactive props
       pickable: true,
@@ -67,12 +71,8 @@ export const deck = new Deck({
       getTargetPosition: f => f.geometry.coordinates,
       getSourceColor: [0, 128, 200],
       getTargetColor: [200, 0, 80],
-      getWidth: 1
+      getWidth: 1,
+      parameters: {cullMode: 'none'}
     })
   ]
 });
-
-// For automated test cases
-/* global document */
-document.body.style.margin = '0px';
-document.body.style.background = '#111';

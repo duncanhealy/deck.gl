@@ -1,46 +1,31 @@
-import {Deck} from '@deck.gl/core';
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {MapboxOverlay as DeckOverlay} from '@deck.gl/mapbox';
 import {GeoJsonLayer, ArcLayer} from '@deck.gl/layers';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 // source: Natural Earth http://www.naturalearthdata.com/ via geojson.xyz
 const AIR_PORTS =
   'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_10m_airports.geojson';
 
-const INITIAL_VIEW_STATE = {
-  latitude: 51.47,
-  longitude: 0.45,
-  zoom: 4,
-  bearing: 0,
-  pitch: 30
-};
-
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json';
+// Set your Mapbox token here or via environment variable
+const MAPBOX_TOKEN = process.env.MapboxAccessToken; // eslint-disable-line
 
 const map = new mapboxgl.Map({
   container: 'map',
-  style: MAP_STYLE,
-  // Note: deck.gl will be in charge of interaction and event handling
-  interactive: false,
-  center: [INITIAL_VIEW_STATE.longitude, INITIAL_VIEW_STATE.latitude],
-  zoom: INITIAL_VIEW_STATE.zoom,
-  bearing: INITIAL_VIEW_STATE.bearing,
-  pitch: INITIAL_VIEW_STATE.pitch
+  style: 'mapbox://styles/mapbox/light-v9',
+  accessToken: MAPBOX_TOKEN,
+  center: [0.45, 51.47],
+  zoom: 4,
+  bearing: 0,
+  pitch: 30
 });
 
-export const deck = new Deck({
-  canvas: 'deck-canvas',
-  width: '100%',
-  height: '100%',
-  initialViewState: INITIAL_VIEW_STATE,
-  controller: true,
-  onViewStateChange: ({viewState}) => {
-    map.jumpTo({
-      center: [viewState.longitude, viewState.latitude],
-      zoom: viewState.zoom,
-      bearing: viewState.bearing,
-      pitch: viewState.pitch
-    });
-  },
+const deckOverlay = new DeckOverlay({
+  // interleaved: true,
   layers: [
     new GeoJsonLayer({
       id: 'airports',
@@ -49,7 +34,7 @@ export const deck = new Deck({
       filled: true,
       pointRadiusMinPixels: 2,
       pointRadiusScale: 2000,
-      getRadius: f => 11 - f.properties.scalerank,
+      getPointRadius: f => 11 - f.properties.scalerank,
       getFillColor: [200, 0, 80, 180],
       // Interactive props
       pickable: true,
@@ -57,6 +42,7 @@ export const deck = new Deck({
       onClick: info =>
         // eslint-disable-next-line
         info.object && alert(`${info.object.properties.name} (${info.object.properties.abbrev})`)
+      // beforeId: 'waterway-label' // In interleaved mode render the layer under map labels
     }),
     new ArcLayer({
       id: 'arcs',
@@ -71,3 +57,6 @@ export const deck = new Deck({
     })
   ]
 });
+
+map.addControl(deckOverlay);
+map.addControl(new mapboxgl.NavigationControl());

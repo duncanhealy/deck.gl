@@ -1,61 +1,145 @@
-import {SimpleMeshLayerDemo} from 'website-components/doc-demos/mesh-layers';
+# SimpleMeshLayer
+
+import {SimpleMeshLayerDemo} from '@site/src/doc-demos/mesh-layers';
 
 <SimpleMeshLayerDemo />
 
-<p class="badges">
-  <img src="https://img.shields.io/badge/lighting-yes-blue.svg?style=flat-square" alt="lighting" />
-</p>
+The `SimpleMeshLayer` renders a number of instances of an arbitrary 3D geometry. For example, it can be used to visualize a fleet of 3d cars each with a position and an orientation over the map.
 
-# SimpleMeshLayer
 
-The `SimpleMeshLayer` renders a number of arbitrary geometries. For example, a fleet of 3d cars each with a position and an orientation over the map.
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs groupId="language">
+  <TabItem value="js" label="JavaScript">
 
 ```js
-import DeckGL from '@deck.gl/react';
+import {Deck} from '@deck.gl/core';
 import {SimpleMeshLayer} from '@deck.gl/mesh-layers';
-import {CubeGeometry} from '@luma.gl/core'
+import {OBJLoader} from '@loaders.gl/scene/obj';
 
-function App({data, viewState}) {
-  /**
-   * Data format:
-   * [
-   *   {
-   *     position: [-122.45, 37.7],
-   *     angle: 0,
-   *     color: [255, 0, 0]
-   *   },
-   *   {
-   *     position: [-122.46, 37.73],
-   *     angle: 90,
-   *     color: [0, 255, 0]
-   *   },
-   *   ...
-   * ]
-   */
-  const layer = new SimpleMeshLayer({
-    id: 'mesh-layer',
-    data,
-    texture: 'texture.png',
-    mesh: new CubeGeometry(),
-    getPosition: d => d.position,
-    getColor: d => d.color,
-    getOrientation: d => [0, d.angle, 0]
+const layer = new SimpleMeshLayer({
+  id: 'SimpleMeshLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+  
+  getColor: d => [Math.sqrt(d.exits), 140, 0],
+  getOrientation: d => [0, Math.random() * 180, 0],
+  getPosition: d => d.coordinates,
+  mesh: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/humanoid_quad.obj',
+  sizeScale: 30,
+  pickable: true,
+  loaders: [OBJLoader]
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="ts" label="TypeScript">
+
+```ts
+import {Deck, PickingInfo} from '@deck.gl/core';
+import {SimpleMeshLayer} from '@deck.gl/mesh-layers';
+import {OBJLoader} from '@loaders.gl/scene/obj';
+
+type BartStation = {
+  name: string;
+  entries: number;
+  exits: number;
+  coordinates: [longitude: number, latitude: number];
+};
+
+const layer = new SimpleMeshLayer<BartStation>({
+  id: 'SimpleMeshLayer',
+  data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+  
+  getColor: (d: BartStation) => [Math.sqrt(d.exits), 140, 0],
+  getOrientation: (d: BartStation) => [0, Math.random() * 180, 0],
+  getPosition: (d: BartStation) => d.coordinates,
+  mesh: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/humanoid_quad.obj',
+  sizeScale: 30,
+  pickable: true,
+  loaders: [OBJLoader]
+});
+
+new Deck({
+  initialViewState: {
+    longitude: -122.4,
+    latitude: 37.74,
+    zoom: 11
+  },
+  controller: true,
+  getTooltip: ({object}: PickingInfo<BartStation>) => object && object.name,
+  layers: [layer]
+});
+```
+
+  </TabItem>
+  <TabItem value="react" label="React">
+
+```tsx
+import React from 'react';
+import {DeckGL} from '@deck.gl/react';
+import {SimpleMeshLayer} from '@deck.gl/mesh-layers';
+import {OBJLoader} from '@loaders.gl/scene/obj';
+import type {PickingInfo} from '@deck.gl/core';
+
+type BartStation = {
+  name: string;
+  entries: number;
+  exits: number;
+  coordinates: [longitude: number, latitude: number];
+};
+
+function App() {
+  const layer = new SimpleMeshLayer<BartStation>({
+    id: 'SimpleMeshLayer',
+    data: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/bart-stations.json',
+    
+    getColor: (d: BartStation) => [Math.sqrt(d.exits), 140, 0],
+    getOrientation: (d: BartStation) => [0, Math.random() * 180, 0],
+    getPosition: (d: BartStation) => d.coordinates,
+    mesh: 'https://raw.githubusercontent.com/visgl/deck.gl-data/master/website/humanoid_quad.obj',
+    sizeScale: 30,
+    pickable: true,
+    loaders: [OBJLoader]
   });
 
-  return <DeckGL viewState={viewState} layers={[layer]} />;
+  return <DeckGL
+    initialViewState={{
+      longitude: -122.4,
+      latitude: 37.74,
+      zoom: 11
+    }}
+    controller
+    getTooltip={({object}: PickingInfo<BartStation>) => object && object.name}
+    layers={[layer]}
+  />;
 }
 ```
 
-`loaders.gl` offers a [category](https://loaders.gl/docs/specifications/category-mesh) of loaders for loading meshes from standard formats. For example, the following code adds support for OBJ files:
+  </TabItem>
+</Tabs>
 
-```js
+
+`loaders.gl` offers a [category](https://loaders.gl/docs/specifications/category-mesh) of loaders for loading meshes from standard formats. For example, the following code adds support for PLY files:
+
+```ts
 import {SimpleMeshLayer} from '@deck.gl/mesh-layers';
-import {OBJLoader} from '@loaders.gl/obj';
+import {PLYLoader} from '@loaders.gl/pointclouds/ply';
 
 new SimpleMeshLayer({
-  ...
-  mesh: 'path/to/model.obj',
-  loaders: [OBJLoader]
+  mesh: 'path/to/model.ply',
+  loaders: [PLYLoader]
 });
 ```
 
@@ -69,18 +153,20 @@ npm install deck.gl
 npm install @deck.gl/core @deck.gl/mesh-layers
 ```
 
-```js
+```ts
 import {SimpleMeshLayer} from '@deck.gl/mesh-layers';
-new SimpleMeshLayer({});
+import type {SimpleMeshLayerProps} from '@deck.gl/mesh-layers';
+
+new SimpleMeshLayer<DataT>(...props: SimpleMeshLayerProps<DataT>[]);
 ```
 
 To use pre-bundled scripts:
 
 ```html
-<script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^8.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/mesh-layers@^8.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/mesh-layers@^9.0.0/dist.min.js"></script>
 ```
 
 ```js
@@ -90,95 +176,90 @@ new deck.SimpleMeshLayer({});
 
 ## Properties
 
-Inherits from all [Base Layer](/docs/api-reference/core/layer.md) properties.
+Inherits from all [Base Layer](../core/layer.md) properties.
 
 ### Mesh
 
-##### `mesh` (String|Geometry|Object)
+#### `mesh` (string | object) {#mesh}
 
 The geometry to render for each data object. One of:
 
 - An URL to a mesh description file in a format supported by [loaders.gl](https://loaders.gl/docs/specifications/category-mesh). The appropriate loader will have to be registered via the loaders.gl `registerLoaders` function for this usage.
-- A luma.gl [Geometry](https://luma.gl/docs/api-reference/engine/geometry) instance
+- A luma.gl [Geometry](https://github.com/visgl/luma.gl/blob/8.5-release/modules/engine/docs/api-reference/geometry.md) instance
+- A luma.gl `GPUVectorGeometry` with shader inputs named `positions`, `normals`, `colors`, and `texCoords`. Works with Arrow columns and ordinary accessors.
 - An object containing the following fields:
   + `positions` (Float32Array) - 3d vertex offset from the object center, in meters
   + `normals` (Float32Array) - 3d normals
   + `texCoords` (Float32Array) - 2d texture coordinates
 
 
-##### `texture` (String|Texture2D|Image|ImageData|HTMLCanvasElement|HTMLVideoElement|ImageBitmap|Object, optional)
+#### `texture` (string | Texture | Image | ImageData | HTMLCanvasElement | HTMLVideoElement | ImageBitmap | Promise | object, optional) {#texture}
 
 - Default `null`.
 
 The texture of the geometries.
 
 - If a string is supplied, it is interpreted as a URL or a [Data URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/Data_URIs).
-- One of the valid [pixel sources for WebGL texture](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D)
-- A luma.gl [Texture2D](https://luma.gl/docs/api-reference/webgl/texture-2d) instance
-- A plain object that can be passed to the `Texture2D` constructor, e.g. `{width: <number>, height: <number>, data: <Uint8Array>}`. Note that whenever this object shallowly changes, a new texture will be created.
+- One of the following, or a Promise that resolves to one of the following:
+  + One of the valid [pixel sources for WebGL2 texture](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texImage2D)
+  + A luma.gl [Texture](https://luma.gl/docs/api-reference/core/resources/texture) instance
+  + A plain object that can be passed to the `Texture` constructor, e.g. `{width: <number>, height: <number>, data: <Uint8Array>}`. Note that whenever this object shallowly changes, a new texture will be created.
 
-The image data will be converted to a [Texture2D](https://luma.gl/docs/api-reference/webgl/texture-2d) object. See `textureParameters` prop for advanced customization.
+The image data will be converted to a [Texture](https://luma.gl/docs/api-reference/core/resources/texture) object. See `textureParameters` prop for advanced customization.
 
 If `texture` is supplied, texture is used to render the geometries. Otherwise, object color obtained via the `getColor` accessor is used.
 
 
-##### `textureParameters` (Object)
+#### `textureParameters` (object) {#textureparameters}
 
-Customize the [texture parameters](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texParameter).
+Customize the [texture parameters](https://luma.gl/docs/api-reference/core/resources/sampler#samplerprops).
 
 If not specified, the layer uses the following defaults to create a linearly smoothed texture from `texture`:
 
-```js
+```ts
 {
-  [GL.TEXTURE_MIN_FILTER]: GL.LINEAR_MIPMAP_LINEAR,
-  [GL.TEXTURE_MAG_FILTER]: GL.LINEAR,
-  [GL.TEXTURE_WRAP_S]: GL.CLAMP_TO_EDGE,
-  [GL.TEXTURE_WRAP_T]: GL.CLAMP_TO_EDGE
+  minFilter: 'linear',
+  magFilter: 'linear',
+  mipmapFilter: 'linear',
+  addressModeU: 'clamp-to-edge',
+  addressModeV: 'clamp-to-edge'
 }
 ```
 
 
 ### Render Options
 
-##### `sizeScale` (Number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `sizeScale` (number, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#sizescale}
 
 - Default `1`.
 
 Multiplier to scale each geometry by.
 
-##### `wireframe` (Boolean, optional)
+#### `wireframe` (boolean, optional) {#wireframe}
 
 - Default: `false`
 
 Whether to render the mesh in wireframe mode.
 
-##### `material` (Object, optional)
+#### `material` (Material, optional) {#material}
 
 * Default: `true`
 
-This is an object that contains material props for [lighting effect](/docs/api-reference/core/lighting-effect.md) applied on extruded polygons.
-Check [the lighting guide](/docs/developer-guide/using-lighting.md#constructing-a-material-instance) for configurable settings.
+This is an object that contains material props for [lighting effect](../core/lighting-effect.md) applied on extruded polygons.
+Check [the lighting guide](../../developer-guide/using-effects.md#material-settings) for configurable settings.
 
-##### `_useMeshColors` (Boolean, optional)
-
-- Default: `false`
-
-Whether to color pixels using vertex colors supplied in the mesh (the `COLOR_0` or `colors` attribute). If set to `true`, vertex colors will be used. If set to `false` (default) vertex colors will be ignored.
-
-Remarks:
-- In the next major release of deck.gl, vertex colors are expected to always be used when supplied with a mesh. This property will then likely be removed and effectively default to true.
 
 ### Data Accessors
 
 
-##### `getPosition` ([Function](/docs/developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getPosition` ([Accessor&lt;Position&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getposition}
 
 - Default: `object => object.position`
 
 Method called to retrieve the center position for each object in the `data` stream.
 
 
-##### `getColor` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square")
+#### `getColor` ([Accessor&lt;Color&gt;](../../developer-guide/using-layers.md#accessors), optional) ![transition-enabled](https://img.shields.io/badge/transition-enabled-green.svg?style=flat-square") {#getcolor}
 
 - Default: `[0, 0, 0, 255]`
 
@@ -189,7 +270,7 @@ The color is in the format of `[r, g, b, [a]]`. Each channel is a number between
 * If an array is provided, it is used as the color for all objects.
 * If a function is provided, it is called on each object to retrieve its color.
 
-##### `getOrientation` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional)
+#### `getOrientation` ([Accessor&lt;number[3]&gt;](../../developer-guide/using-layers.md#accessors), optional) {#getorientation}
 
 - Default: `[0, 0, 0]`
 
@@ -198,7 +279,7 @@ Object orientation defined as a vec3 of Euler angles, `[pitch, yaw, roll]` in de
 * If an array is provided, it is used as the orientation for all objects.
 * If a function is provided, it is called on each object to retrieve its orientation.
 
-##### `getScale` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional)
+#### `getScale` ([Accessor&lt;number[3]&gt;](../../developer-guide/using-layers.md#accessors), optional) {#getscale}
 
 - Default: `[1, 1, 1]`
 
@@ -207,7 +288,7 @@ Scaling factor on the mesh along each axis.
 * If an array is provided, it is used as the scale for all objects.
 * If a function is provided, it is called on each object to retrieve its scale.
 
-##### `getTranslation` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional)
+#### `getTranslation` ([Accessor&lt;number[3]&gt;](../../developer-guide/using-layers.md#accessors), optional) {#gettranslation}
 
 - Default: `[0, 0, 0]`
 
@@ -216,7 +297,7 @@ Translation of the mesh along each axis. Offset from the center position given b
 * If an array is provided, it is used as the offset for all objects.
 * If a function is provided, it is called on each object to retrieve its offset.
 
-##### `getTransformMatrix` ([Function](/docs/developer-guide/using-layers.md#accessors)|Array, optional)
+#### `getTransformMatrix` ([Accessor&lt;number[16]&gt;](../../developer-guide/using-layers.md#accessors), optional) {#gettransformmatrix}
 
 - Default: `null`
 
@@ -225,6 +306,28 @@ Explicitly define a 4x4 column-major model matrix for the mesh. If provided, wil
 
 * If an array is provided, it is used as the transform matrix for all objects.
 * If a function is provided, it is called on each object to retrieve its transform matrix.
+
+### Arrow Columns
+
+See [Using with Arrow](../../developer-guide/using-with-arrow.md) for shared input requirements and limitations.
+
+#### `positions` (Arrow Vector, optional)
+
+* Default: `null`
+
+Numeric XY or XYZ fixed-size lists specifying instance anchors. Overrides [`getPosition`](#getposition).
+
+#### `colors` (Arrow Vector, optional)
+
+* Default: `null`
+
+RGB or RGBA fixed-size lists specifying instance colors. Overrides [`getColor`](#getcolor).
+
+## Remarks
+
+- GPU mesh vertex attributes and indices must each fit in one chunk.
+  Keep the geometry alive while the layer uses it and release it yourself.
+- With `_instanced: false`, GPU-only meshes do not report bounds.
 
 ## Source
 

@@ -5,14 +5,14 @@ on [deck.gl](http://deck.gl) website.
 
 Copy the content of this folder to your project. 
 
-To download the Cesium 3D tileset, you need a Cesium ion access token, and set it to `ION_TOKEN` in `app.js`.
+To download the Cesium 3D tileset, you need a Cesium ion access token, and set it to `ION_TOKEN` in `app.jsx`.
 
 ```bash
 # install dependencies
 npm install
 # or
 yarn
-# bundle and serve the app with webpack
+# bundle and serve the app with vite
 npm start
 ```
 
@@ -24,4 +24,4 @@ To use your own data, check out the [documentation of Tile3DLayer](../../../docs
 
 ### Basemap
 
-The basemap in this example is provided by [CARTO free basemap service](https://carto.com/basemaps). To use an alternative base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services)
+The basemap in this example is provided by [OpenFreeMap](https://openfreemap.org/). To use an alternative base map solution, visit [this guide](https://deck.gl/docs/get-started/using-with-map#using-other-basemap-services)

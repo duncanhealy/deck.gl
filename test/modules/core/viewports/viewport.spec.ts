@@ -1,0 +1,421 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect, vi} from 'vitest';
+import {createTestCRS} from './test-crs';
+import {vecNormalized} from '../../../utils/utils';
+import {
+  OrthographicViewport,
+  Viewport,
+  WebMercatorViewport,
+  _GlobeViewport as GlobeViewport
+} from 'deck.gl';
+import {Matrix4, Vector3} from '@math.gl/core';
+
+/* eslint-disable */
+const TEST_VIEWPORTS = [
+  {
+    id: 'orthographic',
+    width: 800,
+    height: 600,
+    viewMatrix: new Matrix4().lookAt({eye: [0, 0, 1]}),
+    near: 1,
+    far: 10,
+    position: [10, -20, 0],
+    zoom: 1
+  },
+  {
+    id: 'orbit',
+    width: 800,
+    height: 600,
+    viewMatrix: new Matrix4()
+      .lookAt({
+        eye: [0, 0, 1.0722534602547793],
+        up: [0, 1, 0]
+      })
+      .rotateX(-Math.PI / 6)
+      .rotateY((Math.PI * 2) / 3)
+      .scale(0.4266666666666667),
+    fovy: 50,
+    near: 0.1,
+    far: 10,
+    position: [10, -20, 30],
+    zoom: 8
+  },
+  {
+    id: 'first-person',
+    width: 800,
+    height: 600,
+    longitude: -122,
+    latitude: 38,
+    viewMatrix: new Matrix4()
+      .lookAt({
+        eye: [0, 0, 0],
+        center: [0.6, -0.8, 0],
+        up: [0, 0, 1]
+      })
+      .scale(Math.pow(2, 15.910865502636394)),
+    position: [0, 0, 2],
+    zoom: 15.910865502636394
+  }
+];
+
+test('Viewport#imports', () => {
+  expect(Viewport, 'Viewport import ok').toBeTruthy();
+});
+
+test('Viewport#constructor', () => {
+  expect(new Viewport() instanceof Viewport, 'Created new Viewport with default args').toBeTruthy();
+  expect(
+    new Viewport(TEST_VIEWPORTS[0]) instanceof Viewport,
+    'Created new Viewport with test args'
+  ).toBeTruthy();
+
+  expect(
+    new Viewport(
+      Object.assign({}, TEST_VIEWPORTS[0], {
+        width: 0,
+        height: 0
+      })
+    ) instanceof Viewport,
+    'Viewport constructed successfully with 0 width and height'
+  ).toBeTruthy();
+});
+
+test('Viewport#equals', () => {
+  const viewport1a = new Viewport(TEST_VIEWPORTS[0]);
+  const viewport1b = new Viewport(TEST_VIEWPORTS[0]);
+  const viewport2a = new Viewport(TEST_VIEWPORTS[1]);
+  const viewport2b = new Viewport(TEST_VIEWPORTS[1]);
+
+  expect(viewport1a.equals(viewport1a), 'Viewport equality correct').toBeTruthy();
+  expect(viewport1a.equals(viewport1b), 'Viewport equality correct').toBeTruthy();
+  expect(viewport2a.equals(viewport2b), 'Viewport equality correct').toBeTruthy();
+  expect(viewport1a.equals(viewport2a), 'Viewport equality correct').toBeFalsy();
+
+  const globeOptions = {width: 800, height: 600, longitude: 0, latitude: 0, zoom: 1};
+  const globeResolution10a = new GlobeViewport({...globeOptions, resolution: 10});
+  const globeResolution10b = new GlobeViewport({...globeOptions, resolution: 10});
+  const globeResolution5 = new GlobeViewport({...globeOptions, resolution: 5});
+  expect(
+    globeResolution10a.equals(globeResolution10b),
+    'matching globe tessellation resolutions are equal'
+  ).toBeTruthy();
+  expect(
+    globeResolution10a.equals(globeResolution5),
+    'different globe tessellation resolutions are not equal'
+  ).toBeFalsy();
+
+  const orthographicOptions = {width: 800, height: 600, zoomY: 0};
+  const orthographicZoom1a = new OrthographicViewport({...orthographicOptions, zoomX: 1});
+  const orthographicZoom1b = new OrthographicViewport({...orthographicOptions, zoomX: 1});
+  const orthographicZoom2 = new OrthographicViewport({...orthographicOptions, zoomX: 2});
+  expect(
+    orthographicZoom1a.equals(orthographicZoom1b),
+    'matching anisotropic common-space scales are equal'
+  ).toBeTruthy();
+  expect(
+    orthographicZoom1a.equals(orthographicZoom2),
+    'different anisotropic common-space scales are not equal'
+  ).toBeFalsy();
+
+  const webMercatorOptions = {width: 800, height: 600, longitude: 0, latitude: 20, zoom: 10};
+  const currentMeterSizes = new WebMercatorViewport(webMercatorOptions);
+  const legacyMeterSizes = new WebMercatorViewport({
+    ...webMercatorOptions,
+    legacyMeterSizes: true
+  });
+  const matchingLegacyMeterSizes = new WebMercatorViewport({
+    ...webMercatorOptions,
+    legacyMeterSizes: true
+  });
+  expect(
+    currentMeterSizes.equals(legacyMeterSizes),
+    'different meter projection modes are not equal'
+  ).toBeFalsy();
+  expect(
+    legacyMeterSizes.equals(currentMeterSizes),
+    'meter projection equality is symmetric'
+  ).toBeFalsy();
+  expect(
+    legacyMeterSizes.equals(matchingLegacyMeterSizes),
+    'matching legacy meter projection modes are equal'
+  ).toBeTruthy();
+});
+
+test('Viewport.getScales', () => {
+  for (const vc of TEST_VIEWPORTS) {
+    const viewport = new Viewport(vc.mapState);
+    const distanceScales = viewport.getDistanceScales();
+    expect(
+      distanceScales.unitsPerWorldUnit && distanceScales.unitsPerMeter,
+      'distanceScales defined'
+    ).toBeTruthy();
+    expect(distanceScales.unitsPerWorldUnit2).toEqual([0, 0, 0]);
+    expect(distanceScales.unitsPerMeter2).toEqual([0, 0, 0]);
+  }
+});
+
+test('Viewport normalizes partial distance scales', () => {
+  for (const geospatial of [false, true]) {
+    const options = geospatial ? {longitude: -122, latitude: 38} : {};
+    const defaults = new Viewport({...options, distanceScales: {}}).distanceScales;
+    expect(defaults).toEqual({
+      unitsPerWorldUnit: [1, 1, 1],
+      unitsPerMeter: [1, 1, 1],
+      metersPerUnit: [1, 1, 1],
+      unitsPerWorldUnit2: [0, 0, 0],
+      unitsPerMeter2: [0, 0, 0]
+    });
+    const worldOnly = new Viewport({
+      ...options,
+      distanceScales: {unitsPerWorldUnit: [2, 4, 8]}
+    }).distanceScales;
+    expect(worldOnly.unitsPerMeter).toEqual([2, 4, 8]);
+    expect(worldOnly.metersPerUnit).toEqual([0.5, 0.25, 0.125]);
+    const metersOnly = new Viewport({
+      ...options,
+      distanceScales: {unitsPerMeter: [4, 8, 16]}
+    }).distanceScales;
+    expect(metersOnly.unitsPerWorldUnit).toEqual([1, 1, 1]);
+    expect(metersOnly.metersPerUnit).toEqual([0.25, 0.125, 0.0625]);
+    const supplied = Object.freeze({
+      unitsPerWorldUnit: [2, 4, 8] as [number, number, number],
+      unitsPerMeter: [4, 8, 16] as [number, number, number],
+      metersPerUnit: [99, 99, 99] as [number, number, number],
+      unitsPerWorldUnit2: [1, 2, 3] as [number, number, number],
+      unitsPerMeter2: [4, 5, 6] as [number, number, number]
+    });
+    const scales = new Viewport({...options, distanceScales: supplied}).distanceScales;
+    expect(scales).toEqual({...supplied, metersPerUnit: [0.25, 0.125, 0.0625]});
+    expect(supplied.metersPerUnit).toEqual([99, 99, 99]);
+  }
+  expect(new Viewport().distanceScales.metersPerUnit).toEqual([1, 1, 1]);
+});
+
+test('Viewport uses position scales independently of ground-meter scales', () => {
+  const viewport = new Viewport({
+    width: 800,
+    height: 600,
+    zoom: 2,
+    distanceScales: {
+      unitsPerWorldUnit: [1, 1, 3],
+      unitsPerMeter: [2, 2, 6],
+      unitsPerWorldUnit2: [0, 0, 0],
+      unitsPerMeter2: [0, 0, 0]
+    }
+  });
+  expect(viewport.projectPosition([4, 5, 7])).toEqual([4, 5, 21]);
+  expect(viewport.unprojectPosition([4, 5, 21])).toEqual([4, 5, 7]);
+  expect(viewport.metersPerPixel).toBeCloseTo(1 / 24);
+  const pixel = viewport.project([4, 5, 7]);
+  const world = viewport.unproject(pixel.slice(0, 2), {targetZ: 7});
+  world.forEach((value, i) => expect(value).toBeCloseTo([4, 5, 7][i]));
+});
+
+test('Viewport.containsPixel', () => {
+  const viewport = new Viewport({x: 0, y: 0, width: 10, height: 10});
+
+  expect(viewport.containsPixel({x: 5, y: 5}), 'pixel is inside').toBeTruthy();
+  expect(viewport.containsPixel({x: 0, y: 0}), 'pixel is inside').toBeTruthy();
+  expect(viewport.containsPixel({x: 10, y: 10}), 'pixel is outside').toBeFalsy();
+  expect(
+    viewport.containsPixel({x: -1, y: -1, width: 2, height: 2}),
+    'rectangle overlaps'
+  ).toBeTruthy();
+  expect(
+    viewport.containsPixel({x: -3, y: -3, width: 2, height: 2}),
+    'rectangle is outside'
+  ).toBeFalsy();
+  expect(
+    viewport.containsPixel({x: 9, y: 0, width: 2, height: 2}),
+    'rectangle overlaps'
+  ).toBeTruthy();
+  expect(
+    viewport.containsPixel({x: 0, y: 9, width: 2, height: 2}),
+    'rectangle overlaps'
+  ).toBeTruthy();
+  expect(
+    viewport.containsPixel({x: 11, y: 11, width: 2, height: 2}),
+    'rectangle is outside'
+  ).toBeFalsy();
+});
+
+test('Viewport.getFrustumPlanes', () => {
+  const CULLING_TEST_CASES = [
+    {
+      pixels: [400, 300, 0],
+      result: null
+    },
+    {
+      pixels: [799, 1, 0],
+      result: null
+    },
+    {
+      pixels: [1, 599, 0],
+      result: null
+    },
+    {
+      pixels: [799, 599, 0],
+      result: null
+    },
+    {
+      pixels: [1, 1, 0],
+      result: null
+    },
+    {
+      pixels: [-1, 300, 0],
+      result: 'left'
+    },
+    {
+      pixels: [801, 300, 0],
+      result: 'right'
+    },
+    {
+      pixels: [400, -1, 0],
+      result: 'top'
+    },
+    {
+      pixels: [400, 601, 0],
+      result: 'bottom'
+    },
+    {
+      pixels: [400, 300, -1.01],
+      result: 'near'
+    },
+    {
+      pixels: [400, 301, 1.01],
+      result: 'far'
+    }
+  ];
+
+  // TODO - fix first person viewport
+  for (const vc of TEST_VIEWPORTS.slice(0, 2)) {
+    console.log(vc.id);
+    const viewport = new Viewport(vc);
+    const planes = viewport.getFrustumPlanes();
+
+    for (const side in planes) {
+      const plane = planes[side];
+      expect(Number.isFinite(plane.distance), 'distance is defined').toBeTruthy();
+      expect(vecNormalized(plane.normal), 'normal is defined').toBeTruthy();
+    }
+
+    expect(viewport.getFrustumPlanes(), 'frustum planes are cached').toBe(planes);
+
+    for (const tc of CULLING_TEST_CASES) {
+      const lngLat = viewport.unproject(tc.pixels);
+      const commonPosition = viewport.projectPosition(lngLat);
+      const culledDirs = getCulling(commonPosition, planes);
+      if (tc.result) {
+        expect(
+          culledDirs && culledDirs.includes(tc.result),
+          `point culled (${tc.result})`
+        ).toBeTruthy();
+      } else {
+        expect(culledDirs, 'point not culled').toBe(null);
+      }
+    }
+  }
+});
+
+function getCulling(p, planes) {
+  const outDirs = [];
+  p = new Vector3(p);
+  for (const dir in planes) {
+    const plane = planes[dir];
+    if (p.dot(plane.normal) > plane.distance) {
+      outDirs.push(dir);
+    }
+  }
+  return outDirs.length ? outDirs : null;
+}
+
+test('Viewport delegates conversion and target-coordinate scale sampling to its CRS', () => {
+  const getDistanceScale = vi.fn(() => [2, 4, 8] as [number, number, number]);
+  const crs = createTestCRS({
+    converter: {
+      forward: ([x, y, z = 0]) => [x + 100, y * 2, z * 3],
+      inverse: ([x, y, z = 0]) => [x - 100, y / 2, z / 3]
+    },
+    distanceScale: getDistanceScale
+  });
+  const viewport = new Viewport({crs, distanceScales: {unitsPerWorldUnit: [2, 3, 4]}});
+  expect(viewport.crs).toBe(crs);
+  expect(viewport.isGeospatial).toBe(true);
+  expect(viewport.projectPosition([1, 2, 3])).toEqual([202, 12, 36]);
+  expect(viewport.unprojectPosition([202, 12, 36])).toEqual([1, 2, 3]);
+  expect(viewport.projectFlat([1, 2])).toEqual([202, 12]);
+  expect(viewport.unprojectFlat([202, 12])).toEqual([1, 2]);
+  const scales = viewport.getDistanceScales([101, 4, 9]);
+  expect(getDistanceScale).toHaveBeenCalledWith([101, 4, 9]);
+  expect(scales.unitsPerMeter).toEqual([1, 0.75, 0.5]);
+  expect(scales.metersPerUnit).toEqual([1, 4 / 3, 2]);
+  const pixel = viewport.project([1, 2, 3]);
+  viewport
+    .unproject(pixel)
+    .forEach((value, index) => expect(value).toBeCloseTo([1, 2, 3][index], 6));
+});
+
+test('Viewport derives initial scales from its CRS and retains camera fallback', () => {
+  const getDistanceScale = vi.fn(() => [2, 4, 8] as [number, number, number]);
+  const crs = createTestCRS({distanceScale: getDistanceScale});
+  const viewport = new Viewport({crs, position: [10, 20, 30]});
+  expect(getDistanceScale).toHaveBeenCalledWith([10, 20, 30]);
+  expect(viewport.distanceScales.unitsPerMeter).toEqual([0.5, 0.25, 0.125]);
+  crs.getRenderingScale = () => null;
+  expect(viewport.getDistanceScales([99, 99, 99])).toBe(viewport.distanceScales);
+});
+
+test('Viewport remains local without a CRS even if longitude and latitude are supplied', () => {
+  // Extra fields from a shared view state do not select a projection on the base class.
+  const options = {longitude: 12, latitude: 60, zoom: 0};
+  const viewport = new Viewport(options);
+  expect(viewport.crs).toBeUndefined();
+  expect(viewport.isGeospatial).toBe(false);
+  expect(viewport.projectPosition([12, 60, 100])).toEqual([12, 60, 100]);
+  expect(viewport.unprojectPosition([12, 60, 100])).toEqual([12, 60, 100]);
+  expect(viewport.getDistanceScales([12, 60])).toBe(viewport.distanceScales);
+  expect(viewport.zoom).toBe(0);
+});
+
+test('Viewport uses CRS linear units for its default common-space scale', () => {
+  const crs = createTestCRS({
+    metersPerUnit: [0.3048, 0.3048, 1],
+    distanceScale: () => [0.3048, 0.3048, 1]
+  });
+  const viewport = new Viewport({crs});
+  expect(viewport.distanceScales.unitsPerWorldUnit).toEqual([0.3048, 0.3048, 1]);
+  expect(viewport.distanceScales.unitsPerMeter).toEqual([1, 1, 1]);
+  expect(viewport.projectPosition([10, 20, 30])).toEqual([10 * 0.3048, 20 * 0.3048, 30]);
+  expect(viewport.unprojectPosition([10 * 0.3048, 20 * 0.3048, 30])).toEqual([10, 20, 30]);
+});
+
+test('Viewport transforms target coordinates into a separately oriented common space', () => {
+  const crs = createTestCRS({distanceScale: () => [2, 4, 8]});
+  const matrix = new Matrix4().translate([0, 512, 0]).scale([1, -1, 2]);
+  const viewport = new Viewport({crs, targetToCommonMatrix: matrix});
+  expect(viewport.projectPosition([10, 20, 30])).toEqual([10, 492, 60]);
+  expect(viewport.unprojectPosition([10, 492, 60])).toEqual([10, 20, 30]);
+  expect(viewport.projectFlat([10, 20])).toEqual([10, 492]);
+  expect(viewport.unprojectFlat([10, 492])).toEqual([10, 20]);
+  expect(viewport.getDistanceScales([10, 20]).unitsPerMeter).toEqual([0.5, 0.25, 0.25]);
+  const pixel = viewport.project([10, 20, 30]);
+  viewport
+    .unproject(pixel)
+    .forEach((value, axis) => expect(value).toBeCloseTo([10, 20, 30][axis], 6));
+  const restored = viewport.unproject(pixel.slice(0, 2), {targetZ: 30});
+  restored.forEach((value, axis) => expect(value).toBeCloseTo([10, 20, 30][axis], 6));
+  expect(viewport.equals(new Viewport({crs, targetToCommonMatrix: matrix}))).toBe(true);
+  expect(viewport.equals(new Viewport({crs}))).toBe(false);
+});
+
+test('Viewport tracks CRS identity separately from CPU attribute preprojection', () => {
+  const crs = createTestCRS({signature: 'first'});
+  const viewport = new Viewport({crs});
+  expect(viewport.projectionSignature).toBeNull();
+  expect(viewport.equals(new Viewport({crs: createTestCRS({signature: 'second'})}))).toBe(false);
+  expect(new WebMercatorViewport().projectionSignature).toBeNull();
+  expect(new GlobeViewport().projectionSignature).toBeNull();
+});

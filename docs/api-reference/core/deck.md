@@ -2,7 +2,7 @@
 
 `Deck` is a class that takes deck.gl layer instances and viewport parameters, renders those layers as a transparent overlay, and handles events.
 
-If you are using React, you should not use this class directly. Instead you should be rendering the [DeckGL](/docs/api-reference/react/deckgl.md) React component.
+If you are using React, you should not use this class directly. Instead you should be rendering the [DeckGL](../react/deckgl.md) React component.
 
 
 ## Usage
@@ -44,38 +44,63 @@ See the [Properties](#properties) section.
 
 The following properties are used to initialize a `Deck` instance. Any custom value should always be provided to the `Deck` constructor. Changing them with `setProps` afterwards will have no effect.
 
-##### `canvas` (HTMLCanvasElement)
+#### `canvas` (HTMLCanvasElement | String, optional) {#canvas}
 
-The canvas to render into. Will be auto-created if not supplied.
+The canvas to render into. It can be either a HTMLCanvasElement or the element id, and will be auto-created if not supplied.
 
-##### `gl` (WebGLContext)
+#### `_canvases` ((HTMLCanvasElement | String)[], optional) {#_canvases}
 
-WebGL context. Will be auto-created if not supplied.
+Experimental: presentation canvases for multi-canvas mode. Deck renders into an offscreen default context and presents the result into one `PresentationContext` per canvas entry. String entries are resolved as DOM element ids. Views without an explicit [`canvasId`](./view.md#canvasid) render into the first configured canvas.
 
-##### `glOptions` (Object)
+This is a separate experimental opt-in so the existing single-canvas [`canvas`](#canvas) property's accepted values and behavior remain unchanged. Applications that do not provide `_canvases` continue to use the existing single-canvas rendering, event handling, and integration paths.
 
-Additional options used when creating the WebGLContext. See [WebGL context attributes](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext).
+Unlike the other initialization settings in this section, `_canvases` is maintained when updated with `setProps()`. Deck diffs the array and creates, reuses, or destroys presentation targets as needed.
 
-##### `id` (String)
+Notes:
+
+* Do not supply `canvas` and `_canvases` together.
+* `_canvases` is not compatible with `gl`.
+* In multi-canvas mode, each canvas gets its own event manager and controller routing.
+* `_canvases: []` keeps the offscreen-backed device path active but does not create any presentation targets.
+
+Use `deck.getCanvasContext(viewId)` to access the presentation context assigned to a view. Canvas identifiers remain an internal presentation-target detail; Deck APIs that associate resources with a view accept its view id.
+
+#### `device` ([Device](https://luma.gl/docs/api-reference/core/device)) {#device}
+
+luma.gl Device used to manage the application's connection with the GPU. Will be auto-created if not supplied.
+
+When a `Device` is supplied, Deck does not destroy it when finalized. While the `Deck` instance is active, Deck owns the `device.props.onResize` callback for the active render canvas context; use `DeckProps.onResize` to observe Deck canvas resizes.
+
+#### `deviceProps` ([DeviceProps](https://luma.gl/docs/api-reference/core/device#deviceprops) | [WebGLDeviceProps](https://luma.gl/docs/api-reference/webgl/#webgldeviceprops)) {#deviceprops}
+
+Options used for creating a new luma.gl GPU [Device](https://luma.gl/docs/api-reference/core/device). 
+
+Note that when using WebGL, `props.deviceProps.webgl` can be used to specify [WebGL context attributes](https://developer.mozilla.org/en-US/docs/Web/API/HTMLCanvasElement/getContext#contextattributes).
+
+#### `gl` (WebGLContext) {#gl}
+
+WebGL context to use. This prop is deprecated and replaced by `device`.
+
+#### `id` (string) {#id}
 
 * Default: `'deckgl-overlay'`
 
 ID assigned to the canvas that is created by this `Deck` instance, to allow style customization in CSS.
 
-##### `parent` (HTMLElement)
+#### `parent` (HTMLElement) {#parent}
 
 * Default: `document.body`
 
 The container to append the auto-created canvas to.
 
-##### `debug` (Boolean)
+#### `debug` (boolean) {#debug}
 
 * Default: `false`
 
-Flag to enable WebGL debug mode. Also requires an extra luma.gl import:
+Flag to enable GPU debug mode when initializing a device. Import the luma.gl WebGL debug subpath to register the optional debugging tools. The tools are loaded on demand when debug mode is enabled:
 
 ```js
-import '@luma.gl/debug';
+import '@luma.gl/core/webgl-debug';
 import {Deck} from '@deck.gl/core';
 
 new Deck({
@@ -87,14 +112,16 @@ new Deck({
 Notes:
 
 - Debug mode is slower as it will use synchronous operations to keep track of GPU state.
+- This option applies when Deck creates a device or attaches to a supplied `gl` context. It does not change an externally supplied `device` or an already initialized device.
+- `deviceProps.debug`, if supplied, overrides this option.
 
-##### `_typedArrayManagerProps` (Object)
+#### `_typedArrayManagerProps` (object) {#_typedarraymanagerprops}
 
 * Default: {}
 
 (Experimental) May contain the following fields:
-  - `overAlloc` (Number) - Default `2`. By default, attributes are allocated twice the memory than they actually need (on both CPU and GPU). Must be larger than `1`.
-  - `poolSize` (Number) - Default `100`. When memory reallocation is needed, old chunks are held on to and recycled. Smaller number uses less CPU memory. Can be any number `>=0`.
+  - `overAlloc` (number) - Default `2`. By default, attributes are allocated twice the memory than they actually need (on both CPU and GPU). Must be larger than `1`.
+  - `poolSize` (number) - Default `100`. When memory reallocation is needed, old chunks are held on to and recycled. Smaller number uses less CPU memory. Can be any number `>=0`.
 
 The above default settings make data updates faster, at the price of using more memory. If the app does not anticipate frequent data changes, they may be aggressively reduced:
 
@@ -108,23 +135,23 @@ new Deck({
 
 ### Rendering Configuration
 
-##### `width` (Number|String)
+#### `width` (number | string) {#width}
 
 * Default: `'100%'`
 
 Width of the canvas, a number in pixels or a valid CSS string.
 
-##### `height` (Number|String)
+#### `height` (number | string) {#height}
 
 * Default: `'100%'`
 
 Height of the canvas, a number in pixels or a valid CSS string.
 
-##### `style` (Object)
+#### `style` (object) {#style}
 
 Additional CSS styles for the canvas.
 
-##### `useDevicePixels` (Boolean|Number)
+#### `useDevicePixels` (boolean | number) {#usedevicepixels}
 
 * Default: `true`
 
@@ -136,46 +163,51 @@ Controls the resolution of drawing buffer used for rendering.
 
 Note:
 
-* Consider setting to `false` or to a number <=1 if better rendering performance is needed.
+* Consider setting to `false` or to a number `<=1` if better rendering performance is needed.
 * When it is set to a high Number (like, 4 or more), it is possible to hit the system limit for allocating drawing buffer, such cases will log a warning and fallback to system allowed resolution.
 
-##### `parameters` (Object)
+#### `parameters` (object) {#parameters}
 
-Expects an object with WebGL settings. Before each frame is rendered, this object will be passed to luma.gl's `setParameters` function to reset the WebGL context parameters, e.g. to disable depth testing, change blending modes etc. The default parameters set by `Deck` on initialization are the following:
+Expects an object with GPU parameters. Before each frame is rendered, this object will be passed to luma.gl's `RenderPass` to reset the GPU context parameters, e.g. to disable depth testing, change blending modes etc. The default parameters set by `Deck` on initialization are the following:
 
 ```js
 {
   blend: true,
-  blendFunc: [GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA, GL.ONE, GL.ONE_MINUS_SRC_ALPHA],
+  blendColorSrcFactor: 'src-alpha',
+  blendColorDstFactor: 'one-minus-src-alpha',  
+  blendAlphaSrcFactor: 'one',
+  blendAlphaDstFactor: 'one-minus-src-alpha'
   polygonOffsetFill: true,
-  depthTest: true,
-  depthFunc: GL.LEQUAL
+  depthWriteEnabled: true,
+  depthCompare: 'less-equal'
 }
 ```
 
-Refer to the luma.gl [setParameters](https://luma.gl/docs/api-reference/gltools/parameter-setting) API for documentation on supported parameters and values.
+Refer to the luma.gl [GPU parameters](https://luma.gl/docs/api-reference/core/parameters) API for documentation on supported parameters and values.
 
 ```js
-import GL from '@luma.gl/constants';
 new Deck({
   // ...
   parameters: {
-    blendFunc: [GL.ONE, GL.ONE, GL.ONE, GL.ONE],
-    depthTest: false
+    blendColorSrcFactor: 'one',
+    blendColorDstFactor: 'one',
+    blendAlphaSrcFactor: 'one',
+    blendAlphaDstFactor: 'one'
+    depthWriteEnabled: false
   }
 });
 ```
 
 Notes:
 
-- Any WebGL `parameters` prop supplied to individual layers will still override the global `parameters` when that layer is rendered.
-- An alternative way to set `parameters`  is to instead define the `onWebGLInitialized` callback (it receives the `gl` context as parameter) and call the luma.gl `setParameters` method inside it.
+- GPU `parameters` supplied to a view override the global `parameters` for layers rendered in that view.
+- GPU `parameters` supplied to individual layers override both view and global `parameters` when that layer is rendered.
 
-##### `layers` (Array)
+#### `layers` (LayersList) {#layers}
 
 * Default: `[]`
 
-The array of [Layer](/docs/api-reference/core/layer.md) instances to be rendered.
+The array of [Layer](./layer.md) instances to be rendered.
 
 Nested arrays are accepted, as well as falsy values (`null`, `false`, `undefined`). This allows applications to do something like:
 
@@ -190,7 +222,7 @@ new Deck({
 // layers is in the shape of [[<layer>, <layer>], null, [<layer>, <layer>], ...]
 ```
 
-##### `layerFilter` (Function)
+#### `layerFilter` (Function) {#layerfilter}
 
 * Default: `null`
 
@@ -213,8 +245,9 @@ Receives arguments:
 
 - `layer` (Layer) - the layer to be drawn
 - `viewport` (Viewport) - the current viewport
-- `isPicking` (Boolean) - whether this is a picking pass
-- `renderPass` (String) - the name of the current render pass. Some standard passes are:
+- `isPicking` (boolean) - whether this is a picking pass
+- `cullRect` (object) - if defined, indicates that only the content rendered to the given rectangle is needed.
+- `renderPass` (string) - the name of the current render pass. Some standard passes are:
   + `'screen'` - drawing to screen
   + `'picking:hover'` - drawing to offscreen picking buffer due to pointer move
   + `'picking:query'` - drawing to offscreen picking buffer due to user-initiated query, e.g. calling `deck.pickObject`.
@@ -228,19 +261,20 @@ Notes:
 
 - `layerFilter` does not override the visibility if the layer is disabled via `visible: false` or `pickable: false` props.
 - All the lifecycle methods other than `draw` are still triggered even a if a layer is filtered out using this method.
+- To select a layer's initial viewport, accept it in `layerFilter` with `isPicking: false` and `renderPass: 'screen'`. The first matching viewport supplies its initial projection context. The filter runs before initialization, so use layer props rather than initialized state. If none match, initialization uses the shared viewport context.
 
-##### `views` (Object|Array)
+#### `views` (View | View[]) {#views}
 
 * Default: `new MapView()`
 
-A single [`View`](/docs/api-reference/core/view.md) instance, or an array of `View` instances.
+A single [`View`](./view.md) instance, or an array of `View` instances.
 
-`View`s represent the "camera(s)" (essentially viewport dimensions and projection matrices) that you look at your data with. deck.gl offers multiple view types for both geospatial and non-geospatial use cases. Read the [Views and Projections](/docs/developer-guide/views.md) guide for the concept and examples.
+`View`s represent the "camera(s)" (essentially viewport dimensions and projection matrices) that you look at your data with. deck.gl offers multiple view types for both geospatial and non-geospatial use cases. Read the [Views and Projections](../../developer-guide/views.md) guide for the concept and examples.
 
 
-##### `viewState` (Object)
+#### `viewState` (object) {#viewstate}
 
-An object that describes the [view state](/docs/developer-guide/views.md#view-state) for each view in the `views` prop. For example, the default view's view state is described [here](/docs/api-reference/core/map-view.md#view-state):
+An object that describes the [view state](../../developer-guide/views.md#view-state) for each view in the `views` prop. For example, the default view's view state is described [here](./map-view.md#view-state):
 
 ```js
 new Deck({
@@ -255,17 +289,17 @@ new Deck({
 })
 ```
 
-When using multiple views, the `viewState` is a map from each view id to its respective view state object. See [example](/docs/developer-guide/views.md#using-multiple-views-with-view-states).
+When using multiple views, the `viewState` is a map from each view id to its respective view state object. See [example](../../developer-guide/views.md#using-multiple-views-with-view-states).
 
-Transitions between two viewState objects can also be achieved by providing set of fields to `viewState` prop, for more details check [ViewState Transitions](/docs/api-reference/core/view-state-transitions.md)).
+Transitions between two viewState objects can also be achieved by providing set of fields to `viewState` prop, for more details check [ViewState Transitions](../../developer-guide/animations-and-transitions.md#camera-transitions)).
 
 Notes:
 
-- If you supply this prop, you are responsible of managing the changes to the view state upon user interaction. This prop is therefore usually used together with the `onViewStateChange` callback ([example](/docs/developer-guide/interactivity.md#externally-manage-view-state)). For `Deck` to update view states automatically, use the `initialViewState` prop instead.
+- If you supply this prop, you are responsible of managing the changes to the view state upon user interaction. This prop is therefore usually used together with the `onViewStateChange` callback ([example](../../developer-guide/interactivity.md#externally-manage-view-state)). For `Deck` to update view states automatically, use the `initialViewState` prop instead.
 
-##### `initialViewState` (Object)
+#### `initialViewState` (object) {#initialviewstate}
 
-If `initialViewState` is provided, the `Deck` component will track view state changes from any attached `controller` using internal state, with `initialViewState` as its initial view state. This is the easiest way to [control the camera](/docs/developer-guide/interactivity.md).
+If `initialViewState` is provided, the `Deck` component will track view state changes from any attached `controller` using internal state, with `initialViewState` as its initial view state. This is the easiest way to [control the camera](../../developer-guide/interactivity.md).
 
 If the `initialViewState` prop changes, the internally tracked view state will be updated to match the new "initial" view state.
 
@@ -276,18 +310,18 @@ Notes:
 * In simple applications, use of the `initialViewState` prop can avoid the need to track the view state in the application.
 * One drawback of using `initialViewState` for reactive/functional applications is that the `Deck` component becomes more stateful.
 
-##### `effects` (Array)
+#### `effects` (Effect[]) {#effects}
 
 The array of effects to be rendered. A lighting effect will be added if an empty array is supplied. Refer to effect's documentation to see details:
 
-* [LightingEffect](/docs/api-reference/core/lighting-effect.md)
-* [PostProcessEffect](/docs/api-reference/core/post-process-effect.md)
+* [LightingEffect](./lighting-effect.md)
+* [PostProcessEffect](./post-process-effect.md)
 
-##### `_framebuffer` (Object)
+#### `_framebuffer` (object) {#_framebuffer}
 
 (Experimental) Render to a custom frame buffer other than to screen.
 
-##### `_animate` (Boolean)
+#### `_animate` (boolean) {#_animate}
 
 * Default: `false`
 
@@ -296,7 +330,7 @@ The array of effects to be rendered. A lighting effect will be added if an empty
 
 ### Interaction Settings
 
-##### `controller` (Function | Boolean | Object)
+#### `controller` (Function | Boolean | Object) {#controller}
 
 * Default: `null`
 
@@ -326,14 +360,14 @@ new Deck({
 `controller` can be one of the following types:
 
 * `null` or `false`: the viewport is not interactive.
-* `true`: initiates the default controller of the default view - e.g. a [MapController](/docs/api-reference/core/map-controller.md) if `MapView` is used.
-* `Controller` class (not instance): initiates the provided controller with default options. Must be a subclass of [Controller](/docs/api-reference/core/controller.md).
+* `true`: initiates the default controller of the default view - e.g. a [MapController](./map-controller.md) if `MapView` is used.
+* `Controller` class (not instance): initiates the provided controller with default options. Must be a subclass of [Controller](./controller.md).
 * `Object`: controller options. This will be merged with the default controller options.
-  + `controller.type`: the controller class, must be a subclass of [Controller](/docs/api-reference/core/controller.md).
-  + Other options supported by the controller type. Consult the documentation of [Controller](/docs/api-reference/core/controller.md#options).
+  + `controller.type`: the controller class, must be a subclass of [Controller](./controller.md).
+  + Other options supported by the controller type. Consult the documentation of [Controller](./controller.md#options).
 
 
-##### `getCursor` (Function)
+#### `getCursor` (Function) {#getcursor}
 
 * Default: `({isDragging}) => isDragging ? 'grabbing' : 'grab'`
 
@@ -341,9 +375,9 @@ A custom callback to retrieve the cursor type.
 
 Receives arguments:
 
-- `interactiveState` (Object)
-  + `isDragging` (Boolean) - whether the pointer is down and moving
-  + `isHovering` (Boolean) - whether the pointer is over a pickable object
+- `interactiveState` (object)
+  + `isDragging` (boolean) - whether the pointer is down and moving
+  + `isHovering` (boolean) - whether the pointer is over a pickable object
 
 Returns:
 
@@ -353,23 +387,23 @@ Remarks:
 
 * It is worth noting that when supplying a custom image for the cursor icon, Chrome requires a fallback option to be supplied, otherwise the custom image will not be loaded; e.g. `getCursor={() => 'url(images/custom.png), auto'}`
 
-##### `getTooltip` (Function)
+#### `getTooltip` (Function) {#gettooltip}
 
 Callback that takes a hovered-over point and renders a tooltip. If the prop is not specified, the tooltip is always hidden.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being hovered.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being hovered.
 
 Returns one of the following:
 
 * `null` - the tooltip is hidden, with the CSS `display` property set to `none`.
 * A string - the string is rendered in a tooltip with the default CSS styling described below.
 * An object with the following fields:
-  + `text` (String, optional) - Specifies the `innerText` attribute of the tooltip.
-  + `html` (String, optional) - Specifies the `innerHTML` attribute of the tooltip. Note that this will override the specified `innerText`.
-  + `className` (String, optional) - Class name to attach to the tooltip element. The element has the default class name of `deck-tooltip`.
-  + `style` (Object, optional) - An object of CSS styles to apply to the tooltip element, which can override the default styling.
+  + `text` (string, optional) - Specifies the `innerText` attribute of the tooltip.
+  + `html` (string, optional) - Specifies the `innerHTML` attribute of the tooltip. Note that this will override the specified `innerText`.
+  + `className` (string, optional) - Class name to attach to the tooltip element. The element has the default class name of `deck-tooltip`.
+  + `style` (object, optional) - An object of CSS styles to apply to the tooltip element, which can override the default styling.
 
 By default, the tooltip has the following CSS style:
 
@@ -381,12 +415,12 @@ background-color: #29323c;
 padding: 10px;
 ```
 
-##### `pickingRadius` (Number)
+#### `pickingRadius` (number) {#pickingradius}
 
 Extra pixels around the pointer to include while picking. This is helpful when rendered objects are difficult to target, for example irregularly shaped icons, small moving circles or interaction by touch. Default `0`.
 
 
-##### `touchAction` (String)
+#### `touchAction` (string) {#touchaction}
 
 * Default: `none`.
 
@@ -394,17 +428,17 @@ Allow browser default touch actions. See [hammer.js documentation](http://hammer
 
 By default, the deck canvas captures all touch interactions. This prop is useful for mobile applications to unblock default scrolling behavior. For example, use the combination `controller: {dragPan: false}` and `touchAction: 'pan-y'` to allow vertical page scroll when dragging over the canvas.
 
-##### `eventRecognizerOptions` (Object)
+#### `eventRecognizerOptions` (object) {#eventrecognizeroptions}
 
 - default: `{}`
 
 Set options for gesture recognition. May contain the following fields:
 
-- `pan` - an object that is [Hammer.Pan](http://hammerjs.github.io/recognizer-pan/) options. This gesture is used for drag events.
-- `pinch` - an object that is [Hammer.Pinch](http://hammerjs.github.io/recognizer-pinch/) options This gesture is used for two-finger touch events.
-- `tripan` - an object that is [Hammer.Pan](http://hammerjs.github.io/recognizer-pan/) options.  This gesture is used for three-finger touch events.
-- `tap` - an object that is [Hammer.Tap](http://hammerjs.github.io/recognizer-tap/) options. This gesture is used for the `onClick` callback.
-- `doubletap` - an object that is [Hammer.Tap](http://hammerjs.github.io/recognizer-tap/) options. This gesture is used for double click events.
+- `pan` - an object that is [Pan](https://visgl.github.io/mjolnir.js/docs/api-reference/pan) options. This gesture is used for `onDrag` events, viewport panning (mouse/touch) and rotating (mouse+ctrl). Default `{threshold: 1}`.
+- `pinch` - an object that is [Pinch](https://visgl.github.io/mjolnir.js/docs/api-reference/pinch) options. This gesture is used for multi-touch zooming/rotating and trackpad pinch. Default `{trackpad: true}`.
+- `multipan` - an object that is [Pan](https://visgl.github.io/mjolnir.js/docs/api-reference/pan) options. This gesture is used for multi-touch and trackpad panning/rotation. Default `{threshold: 10, pointers: 2, trackpad: true}`.
+- `click` - an object that is [Tap](https://visgl.github.io/mjolnir.js/docs/api-reference/tap) options. This gesture is used for the `onClick` event.
+- `dblclick` - an object that is [Tap](https://visgl.github.io/mjolnir.js/docs/api-reference/tap) options. This gesture is used for double-click zooming.
 
 For example, the following setting makes panning less sensitive and clicking easier on mobile:
 
@@ -418,7 +452,7 @@ new Deck({
 })
 ```
 
-##### `_pickable` (Boolean)
+#### `_pickable` (boolean) {#_pickable}
 
 * Default: `true`
 
@@ -427,15 +461,15 @@ new Deck({
 
 ### Event Callbacks
 
-##### `onWebGLInitialized` (Function)
+#### `onDeviceInitialized` (Function) {#ondeviceinitialized}
 
-Called once the WebGL context has been initiated.
+Called once the [Device](https://luma.gl/docs/api-reference/core/device) context has been initiated.
 
 Receives arguments:
 
-* `gl` - the WebGL context.
+* `device` (Device) - a `WebGLDevice` or `WebGPUDevice`.
 
-##### `onViewStateChange` (Function)
+#### `onViewStateChange` (Function) {#onviewstatechange}
 
 Called when the user has interacted with the deck.gl canvas, e.g. using mouse, touch or keyboard.
 
@@ -443,22 +477,23 @@ Called when the user has interacted with the deck.gl canvas, e.g. using mouse, t
 
 Receives arguments:
 
-* `viewState` - An updated [view state](/docs/developer-guide/views.md) object.
+* `viewState` - An updated [view state](../../developer-guide/views.md) object.
 * `interactionState` - Describes the interaction that invoked the view state change. May include the following fields:
-  + `inTransition` (Boolean)
-  + `isDragging` (Boolean)
-  + `isPanning` (Boolean)
-  + `isRotating` (Boolean)
-  + `isZooming` (Boolean)
-* `oldViewState` - The previous [view state](/docs/developer-guide/views.md) object.
+  + `inTransition` (boolean)
+  + `isDragging` (boolean)
+  + `isPanning` (boolean)
+  + `isRotating` (boolean)
+  + `isZooming` (boolean)
+  + `rotationPivotPosition` ([number, number, number]) - World coordinate `[lng, lat, altitude]` of the rotation pivot point when rotating. Only present when the `rotationPivot` controller option is set to `'2d'` or `'3d'`.
+* `oldViewState` - The previous [view state](../../developer-guide/views.md) object.
 
 Returns:
 
-A view state object that is used to update `Deck`'s internally tracked view state (see `initialViewState`). This can be used to intercept and modify the view state before the camera updates, see [add constraints to view state example](/docs/developer-guide/interactivity.md#add-constraints-to-view-state).
+A view state object that is used to update `Deck`'s internally tracked view state (see `initialViewState`). This can be used to intercept and modify the view state before the camera updates, see [add constraints to view state example](../../developer-guide/interactivity.md#add-constraints-to-view-state).
 
 If no value is returned, it's equivalent to `(viewState) => viewState`.
 
-##### `onInteractionStateChange` (Function)
+#### `onInteractionStateChange` (Function) {#oninteractionstatechange}
 
 Called when the user has interacted with the deck.gl canvas, e.g. using mouse, touch or keyboard.
 
@@ -467,79 +502,81 @@ Called when the user has interacted with the deck.gl canvas, e.g. using mouse, t
 Receives arguments:
 
 * `interactionState` - Describes the current interaction. May include the following fields:
-  + `inTransition` (Boolean)
-  + `isDragging` (Boolean)
-  + `isPanning` (Boolean)
-  + `isRotating` (Boolean)
-  + `isZooming` (Boolean)
+  + `inTransition` (boolean)
+  + `isDragging` (boolean)
+  + `isPanning` (boolean)
+  + `isRotating` (boolean)
+  + `isZooming` (boolean)
+  + `rotationPivotPosition` ([number, number, number]) - World coordinate `[lng, lat, altitude]` of the rotation pivot point when rotating. Only present when the `rotationPivot` controller option is set to `'2d'` or `'3d'`.
 
 Note:
 * `onInteractionStateChange` may be fired without `onViewStateChange`. For example, when the pointer is released at the end of a drag-pan, `isDragging` is reset to `false`, without the viewport's `longitude` and `latitude` changing.
 
 
-##### `onHover` (Function)
+#### `onHover` (Function) {#onhover}
 
 Called when the pointer moves over the canvas.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being hovered.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being hovered.
 * `event` - the original gesture event
 
-##### `onClick` (Function)
+#### `onClick` (Function) {#onclick}
 
 Called when clicking on the canvas.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being clicked.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being clicked.
 * `event` - the original gesture event
 
-##### `onDragStart` (Function)
+#### `onDragStart` (Function) {#ondragstart}
 
 Called when the user starts dragging on the canvas.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being dragged.
 * `event` - the original gesture event
 
-##### `onDrag` (Function)
+#### `onDrag` (Function) {#ondrag}
 
 Called when dragging the canvas.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being dragged.
 * `event` - the original gesture event
 
-##### `onDragEnd` (Function)
+#### `onDragEnd` (Function) {#ondragend}
 
 Called when the user releases from dragging the canvas.
 
 Receives arguments:
 
-* `info` - the [picking info](/docs/developer-guide/interactivity.md#the-picking-info-object) describing the object being dragged.
+* `info` - the [picking info](../../developer-guide/interactivity.md#the-pickinginfo-object) describing the object being dragged.
 * `event` - the original gesture event
 
 
-##### `onLoad` (Function)
+#### `onLoad` (Function) {#onload}
 
 Called once after gl context and Deck components (`ViewManager`, `LayerManager`, etc) are created. It is safe to trigger viewport transitions after this event.
 
 
-##### `onResize` (Function)
+#### `onResize` (Function) {#onresize}
 
 Called when the canvas resizes.
 
 Receives arguments:
 
 * `size`
-  - `width` (Number) - the new width of the deck canvas, in client pixels
-  - `height` (Number) - the new height of the deck canvas, in client pixels
+  - `width` (number) - the new width of the deck canvas, in client pixels
+  - `height` (number) - the new height of the deck canvas, in client pixels
+* `canvasContext` ([CanvasContext](https://luma.gl/docs/api-reference/core/canvas-context), optional) - the luma.gl canvas context that reported the resize
 
 
-##### `onBeforeRender` (Function)
+#### `onBeforeRender` (Function) {#onbeforerender}
 
 Called just before the canvas rerenders.
 
@@ -548,7 +585,7 @@ Receives arguments:
 * `gl` - the WebGL context.
 
 
-##### `onAfterRender` (Function)
+#### `onAfterRender` (Function) {#onafterrender}
 
 Called right after the canvas rerenders.
 
@@ -557,17 +594,19 @@ Receives arguments:
 * `gl` - the WebGL context.
 
 
-##### `onError` (Function)
+#### `onError` (Function) {#onerror}
 
-Called if deck.gl encounters an error. By default, deck logs the error to console and attempt to continue rendering the rest of the scene.
+* Default: `console.error`
+
+Called if deck.gl encounters an error. By default, deck logs the error to console and attempt to continue rendering the rest of the scene. If this callback is set to `null`, errors are silently ignored.
 
 Receives arguments:
 
 * `error` ([Error](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error))
-* `source` - the source of the error, likely a Layer instance
+* `layer` (Layer?) - the layer where the error is originated, if applicable
 
 
-##### `_onMetrics` (Function)
+#### `_onMetrics` (Function) {#_onmetrics}
 
 (Experimental) Called once every second with performance metrics.
 
@@ -578,14 +617,94 @@ Receives arguments:
 
 ## Methods
 
-##### `finalize`
+#### `finalize` {#finalize}
 
 Frees all resources associated with this `Deck` instance.
 
 `deck.finalize()`
 
+#### `getCanvas` {#getcanvas}
 
-##### `setProps`
+Get the canvas element attached to this `Deck` instance.
+
+`deck.getCanvas()`
+
+Returns:
+
+* Either an `HTMLCanvasElement` or `null` if one isn't assigned.
+
+Notes:
+
+* See the [canvas](#canvas) prop for more information.
+* In multi-canvas mode, this returns the first configured presentation canvas.
+
+#### `getCanvasContext` {#getcanvascontext}
+
+Get the canvas context associated with a view, or the default Deck canvas when no view id is supplied.
+
+```js
+deck.getCanvasContext(viewId)
+```
+
+Parameters:
+
+* `viewId` (string, optional) - the id of the view whose presentation context to retrieve.
+
+Returns:
+
+* A luma.gl `CanvasContext` or `PresentationContext`, or `null` when no matching canvas is available.
+
+In multi-canvas mode, the context is resolved from the view's `canvasId`. This lets view-bound
+components use a view id without depending on presentation-target identifiers.
+
+#### `getViews` {#getviews}
+
+Get all views currently rendered by this `Deck` instance.
+
+`deck.getViews()`
+
+Returns:
+
+* An array of [View](./view.md) instances.
+
+#### `getView` {#getview}
+
+Get a specific view by id.
+
+```js
+deck.getView(viewId)
+```
+
+Parameters:
+
+* `viewId` (string) - the id of the view to retrieve
+
+Returns:
+
+* A [View](./view.md) instance, or `undefined` if no view with the given id exists.
+
+#### `getViewports` {#getviewports}
+
+Get all viewports currently rendered by this `Deck` instance.
+
+```js
+deck.getViewports(rect)
+```
+
+Parameters:
+
+* `rect` (object, optional) - if provided, only returns viewports that contain the given rectangle. Has the following fields:
+  + `x` (number) - left of the bounding box in pixels
+  + `y` (number) - top of the bounding box in pixels
+  + `width` (number, optional) - width of the bounding box in pixels
+  + `height` (number, optional) - height of the bounding box in pixels
+  + `canvasId` (string, optional) - limit the search to viewports rendered into the given presentation canvas
+
+Returns:
+
+* An array of [Viewport](./viewport.md) instances.
+
+#### `setProps` {#setprops}
 
 Updates (partial) properties.
 
@@ -597,7 +716,7 @@ Parameters:
 
 * One or more properties to update, as described in the "Properties" section on this page.
 
-##### `redraw`
+#### `redraw` {#redraw}
 
 Attempt to draw immediately, rather than waiting for the next draw cycle. By default, deck flushes all changes to the canvas on each animation frame. This behavior might cause the deck canvas to fall out of sync with other components if synchronous updates are required.
 
@@ -609,75 +728,135 @@ deck.redraw(true);
 
 Parameters:
 
-* `force` (Boolean) - if `false`, only redraw if necessary (e.g. changes have been made to views or layers). If `true`, skip the check. Default `false`.
+* `force` (boolean) - if `false`, only redraw if necessary (e.g. changes have been made to views or layers). If `true`, skip the check. Default `false`.
 
 
-##### `pickObject`
+#### `pickObjectAsync` {#pickobjectasync}
+
+Get the closest pickable and visible object at the given screen coordinate.
+
+```ts
+await deck.pickObjectAsync({x, y, canvasId, radius, layerIds, unproject3D})
+```
+
+Parameters:
+
+* `x` (number) - x position in pixels
+* `y` (number) - y position in pixels
+* `canvasId` (string, optional) - query within the specified presentation canvas in multi-canvas mode
+* `radius` (number, optional) - radius of tolerance in pixels. Default `0`.
+* `layerIds` (string[], optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `unproject3D` (boolean, optional) - if `true`, `info.coordinate` will be a 3D point by unprojecting the `x, y` screen coordinates onto the picked geometry. Default `false`.
+
+Returns:
+
+* a single [`info`](../../developer-guide/interactivity.md#the-pickinginfo-object) object, or `null` if nothing is found.
+
+
+#### `pickObjectsAsync` {#pickobjectsasync}
+
+Get all pickable and visible objects within a bounding box.
+
+```ts
+await deck.pickObjectsAsync({x, y, width, height, canvasId, layerIds, maxObjects})
+```
+
+Parameters:
+
+* `x` (number) - left of the bounding box in pixels
+* `y` (number) - top of the bouding box in pixels
+* `width` (number, optional) - width of the bouding box in pixels. Default `1`.
+* `height` (number, optional) - height of the bouding box in pixels. Default `1`.
+* `canvasId` (string, optional) - query within the specified presentation canvas in multi-canvas mode
+* `layerIds` (string[], optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `maxObjects` (number, optional) - if specified, limits the number of objects that can be returned.
+
+Returns:
+
+* an array of unique [`info`](../../developer-guide/interactivity.md#the-pickinginfo-object) objects
+
+Notes:
+
+* The query methods are designed to quickly find objects by utilizing the picking buffer.
+* The query methods offer more flexibility for developers to handle events compared to the built-in hover and click callbacks.
+
+#### `pickObject` {#pickobject}
+
+<img src="https://img.shields.io/badge/WebGPU-❌-brightgreen.svg?style=flat-square" />
 
 Get the closest pickable and visible object at the given screen coordinate.
 
 ```js
-deck.pickObject({x, y, radius, layerIds})
+deck.pickObject({x, y, canvasId, radius, layerIds, unproject3D})
 ```
 
 Parameters:
 
-* `x` (Number) - x position in pixels
-* `y` (Number) - y position in pixels
-* `radius` (Number, optional) - radius of tolerance in pixels. Default `0`.
-* `layerIds` (Array, optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
-* `unproject3D` (Boolean, optional) - if `true`, `info.coordinate` will be a 3D point by unprojecting the `x, y` screen coordinates onto the picked geometry. Default `false`.
+* `x` (number) - x position in pixels
+* `y` (number) - y position in pixels
+* `canvasId` (string, optional) - query within the specified presentation canvas in multi-canvas mode
+* `radius` (number, optional) - radius of tolerance in pixels. Default `0`.
+* `layerIds` (string[], optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `unproject3D` (boolean, optional) - if `true`, `info.coordinate` will be a 3D point by unprojecting the `x, y` screen coordinates onto the picked geometry. Default `false`.
 
 Returns:
 
-* a single [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) object, or `null` if nothing is found.
+* a single [`info`](../../developer-guide/interactivity.md#the-pickinginfo-object) object, or `null` if nothing is found.
 
 
-##### `pickMultipleObjects`
+#### `pickMultipleObjects` {#pickmultipleobjects}
+
+<img src="https://img.shields.io/badge/WebGPU-❌-brightgreen.svg?style=flat-square" />
 
 Performs deep picking. Finds all close pickable and visible object at the given screen coordinate, even if those objects are occluded by other objects.
 
 ```js
-deck.pickMultipleObjects({x, y, radius, layerIds, depth})
+deck.pickMultipleObjects({x, y, canvasId, radius, layerIds, depth, unproject3D})
 ```
 
 Parameters:
 
-* `x` (Number) - x position in pixels
-* `y` (Number) - y position in pixels
-* `radius`=`0` (Number, optional) - radius of tolerance in pixels.
-* `layerIds`=`null` (Array, optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
-* `depth`=`10` - Specifies the max
-* `unproject3D` (Boolean, optional) - if `true`, `info.coordinate` will be a 3D point by unprojecting the `x, y` screen coordinates onto the picked geometry. Default `false`.
+* `x` (number) - x position in pixels
+* `y` (number) - y position in pixels
+* `canvasId` (string, optional) - query within the specified presentation canvas in multi-canvas mode
+* `radius` (number, optional) - radius of tolerance in pixels. Default `0`.
+* `layerIds` (string[], optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `depth` - Specifies the max number of objects to return. Default `10`. For layers without explicit picking index buffers, only the default depth of 10 unique objects per layer is guaranteed; higher custom depths may return duplicate results for these layers.
+* `unproject3D` (boolean, optional) - if `true`, `info.coordinate` will be a 3D point by unprojecting the `x, y` screen coordinates onto the picked geometry. Default `false`.
 
 Returns:
 
-* An array of [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) objects. The array will be empty if no object was picked.
+* An array of [`info`](../../developer-guide/interactivity.md#the-pickinginfo-object) objects. The array will be empty if no object was picked.
 
 Notes:
 
 * Deep picking is implemented as a sequence of simpler picking operations and can have a performance impact. Should this become a concern, you can use the `depth` parameter to limit the number of matches that can be returned, and thus the maximum number of picking operations.
+* Layers that provide explicit picking index buffers support buffer mutation between picking passes and are not subject to the default-depth unique-object guarantee.
 
 
-##### `pickObjects`
+#### `pickObjects` {#pickobjects}
+
+<img src="https://img.shields.io/badge/WebGPU-❌-brightgreen.svg?style=flat-square" />
 
 Get all pickable and visible objects within a bounding box.
 
 ```js
-deck.pickObjects({x, y, width, height, layerIds})
+deck.pickObjects({x, y, width, height, canvasId, layerIds, maxObjects})
 ```
 
 Parameters:
 
-* `x` (Number) - left of the bounding box in pixels
-* `y` (Number) - top of the bouding box in pixels
-* `width` (Number, optional) - width of the bouding box in pixels. Default `1`.
-* `height` (Number, optional) - height of the bouding box in pixels. Default `1`.
-* `layerIds` (Array, optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `x` (number) - left of the bounding box in pixels
+* `y` (number) - top of the bouding box in pixels
+* `width` (number, optional) - width of the bouding box in pixels. Default `1`.
+* `height` (number, optional) - height of the bouding box in pixels. Default `1`.
+* `canvasId` (string, optional) - query within the specified presentation canvas in multi-canvas mode
+* `layerIds` (string[], optional) - a list of layer ids to query from. If not specified, then all pickable and visible layers are queried.
+* `maxObjects` (number, optional) - if specified, limits the number of objects that can be returned.
 
 Returns:
 
-* an array of unique [`info`](/docs/developer-guide/interactivity.md#the-picking-info-object) objects
+* an array of unique [`info`](../../developer-guide/interactivity.md#the-pickinginfo-object) objects
 
 Notes:
 
@@ -687,16 +866,25 @@ Notes:
 
 ## Member Variables
 
-##### `metrics`
+#### `isInitialized` {#isinitialized}
+
+Flag indicating that the Deck instance has initialized its resources. It is safe to call public methods when `isInitialized` is `true`.
+
+#### `metrics` {#metrics}
 
 A map of various performance statistics for the last 60 frames of rendering. Metrics gathered in deck.gl are the following:
 
 - `fps` - average number of frames rendered per second
-- `updateAttributesTime` - time spent updating layer attributes
 - `setPropsTime` - time spent setting deck properties
+- `layersCount` - total number of layers created recursively
+- `drawLayersCount` - number of layers drawn to screen in the last render pass
+- `updateLayersCount` - number of times layer update lifecycle methods are run
+- `updateAttributesCount` - number of times attribute buffers are updated
+- `updateAttributesTime` - time spent updating layer attributes
 - `framesRedrawn` - number of times the scene was rendered
 - `pickTime` - total time spent on picking operations
 - `pickCount` - number of times a pick operation was performed
+- `pickLayersCount` - number of layers drawn to the picking buffer in the last picking operation
 - `gpuTime` - total time spent on GPU processing
 - `gpuTimePerFrame` - average time spent on GPU processing per frame
 - `cpuTime` - total time spent on CPU processing
@@ -706,7 +894,14 @@ A map of various performance statistics for the last 60 frames of rendering. Met
 - `renderbufferMemory` - total GPU memory allocated for renderbuffers
 - `gpuMemory` - total allocated GPU memory
 
+Note that `gpuTime` and `gpuTimePerFrame` metrics are disabled by default for performance reasons. To enable the readings, set `deviceProps.debugGPUTime: true` in Deck's constructor:
+
+```ts
+new Deck({
+  deviceProps: {debugGPUTime: true}
+})
+```
 
 ## Source
 
-[modules/core/src/lib/deck.js](https://github.com/visgl/deck.gl/blob/master/modules/core/src/lib/deck.js)
+[modules/core/src/lib/deck.ts](https://github.com/visgl/deck.gl/blob/master/modules/core/src/lib/deck.ts)

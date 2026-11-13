@@ -1,0 +1,121 @@
+# Repository Guidance
+
+This file applies to the entire `deck.gl` repository. More specific `AGENTS.md` files in
+subdirectories may add local guidance.
+
+## Setup Commands
+
+- Install dependencies from the repo root: `yarn`
+- Build packages: `yarn build`
+- Run lint: `yarn lint`
+- Run all tests: `yarn test`
+- Run headless tests: `yarn test-headless`
+- Run render tests: `yarn test-render`
+- Run browser tests: `yarn test-browser`
+- Run website checks: `yarn test-website`
+- Use the exact script names from `package.json`; do not substitute spaced forms such as
+  `yarn test headless`.
+
+## Before Committing
+
+- Run the most relevant tests for the changed packages, integrations, examples, or docs.
+- Run `yarn lint` for JavaScript and TypeScript changes. If lint failures are unrelated existing
+  issues, call that out explicitly instead of hiding it.
+- If dependencies or package metadata changed, run `yarn` in the repo root and include any
+  `yarn.lock` updates.
+- Do not reformat files you are not otherwise changing. Keep formatting-only churn separate from
+  logic changes when practical.
+
+## Pull Request Descriptions
+
+- Follow `dev-docs/pr-description-guidelines.md`. Use the headings from
+  `.github/pull_request_template.md` as they are: an issue reference, an optional
+  `#### Background` and a `#### Change List`. Do not add `Test plan` or `Validation` sections.
+- Keep it short. Most good descriptions are under 900 characters. Background is one to three
+  present-tense sentences on what is wrong or missing today; remove it if the linked issue already
+  explains it.
+- The Change List has one bullet per module, class, API or artifact, ten words or less, starting
+  with a verb or the name of the thing changed, identifiers in backticks, no trailing periods.
+  Include updated golden images (and why), removed workarounds, and deleted or skipped tests. Put
+  the reasoning and impact of a breaking change as sub-bullets under it. End with `Unit tests`,
+  `Render tests`, `Documentation` and `Upgrade guide` as applicable.
+- State how the change was verified in one line or as Change List bullets, listing what was
+  actually run. Do not leave checkboxes for the reviewer.
+- Do not add footers, emoji, links to tool sessions, `Co-Authored-By` lines, or tables of files.
+- Do not make up an issue number. Ask the contributor for it if it is not known, and remove the
+  line if there is none.
+
+## Ready For Merge
+
+When asked to "get ready for merge", do a full merge-readiness pass:
+
+- Audit the public API surface touched by the change. Add or update TSDoc for every new or changed
+  public class, function, method, property, and type.
+- Do a documentation pass when behavior, public API, examples, or migration guidance changed.
+  Include relevant module docs, examples, sidebars, `docs/whats-new.md`, and upgrade or migration
+  guide content.
+- Keep upgrade guides focused on breaking changes, removals, and deprecations. Put new-feature
+  notes in the appropriate module docs or release notes instead.
+- Run `yarn` in the repo root so workspace metadata and `yarn.lock` are up to date, especially
+  after any `package.json` change.
+- Run `yarn build` as the repo-wide type, declaration, and package build gate.
+- Run `yarn lint` for the final lint and formatting gate, then review the resulting diff.
+- Run the relevant tests for the changed packages, examples, integrations, and docs/website wiring.
+  Typical commands are `yarn test`, `yarn test-headless`, `yarn test-render`, `yarn test-browser`,
+  and `yarn test-website`.
+- For website or docs changes, run the website check from the repo root with `yarn test-website`.
+- Prepare a copyable Markdown PR description based on the branch diff compared to `master`,
+  following `dev-docs/pr-description-guidelines.md` and the headings in
+  `.github/pull_request_template.md`. The contributor decides what to disclose about how the
+  description was drafted.
+- In the final handoff, call out which merge-readiness gates passed, which were not run, and any
+  remaining risk or unrelated pre-existing failures.
+
+## Code Style
+
+- Prefer TypeScript and ES module syntax.
+- Match the surrounding file style. In source files, use single quotes and semicolons.
+- Prefer descriptive names and avoid ad hoc abbreviations. Conventional mathematical, graphical,
+  geospatial, web-platform, and deck.gl callback abbreviations are allowed when unambiguous in
+  context. Examples include `x`, `y`, `z`, and `w` for vector components; `i`, `j`, and `k` for
+  indices; `r`, `g`, `b`, and `a` for color channels; `u` and `v` for texture coordinates; `d`
+  for a datum in accessor callbacks; and established terms such as `gl`, `id`, `lat`, `lng`,
+  `url`, `WebGL`, `GPU`, and `SDF`.
+- Use camelCase for variables, functions, and fields; PascalCase for types and classes; and
+  CAPITAL_CASE for constants.
+- Prefer verb-noun names for functions and methods.
+- File names should be kebab-case unless an existing local convention differs.
+
+## Logging and Assertions
+
+- Runtime strings ship in every application bundle. Add a `log.warn('...')()` only for a
+  developer error that users need to see, and keep the message short. probe.gl log calls return
+  a function, so the trailing `()` is required.
+- For conditions that cannot happen in correct code, use `assert(condition)` with no message and
+  put the explanation in a code comment above it, so that stopping in the debugger shows the
+  reason. Inside `@deck.gl/core` import it from the relative `utils/assert` path; other modules
+  import `assert` from `@deck.gl/core`.
+- Use `log.log(priority, '...')()` at priority 3 or higher for lifecycle and diffing detail; see
+  `docs/developer-guide/debugging.md`.
+
+## Render Tests
+
+- Comment each case in `test/render/test-cases` with what it draws, if the code doesn't make that
+  obvious, and a `// Golden:` line describing what the image should show, so a reviewer can
+  check the golden by eye. Keep file headers to a sentence or two.
+- Don't write paragraphs explaining a case. Keep a non-obvious reason (a skip, a threshold, why a
+  prop is off) to one line; implementation detail belongs in the PR or an issue.
+
+## Dependencies
+
+- Be conservative with new external dependencies. Add one only when it provides meaningful
+  capability, not just a small utility.
+- Prefer vis.gl ecosystem packages when they fit the layering. Lower-level math or utility modules
+  should not depend on deck.gl.
+- Prefer math.gl modules for math helpers.
+- Avoid lodash-style dependencies for simple operations.
+
+## Investigation
+
+- Do not fix problems by adding caches. Investigate why the problem occurs and address the root
+  cause.

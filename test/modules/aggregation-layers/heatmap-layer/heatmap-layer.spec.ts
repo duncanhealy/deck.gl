@@ -1,0 +1,530 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import {test, expect} from 'vitest';
+import * as FIXTURES from 'deck.gl-test/data';
+import {testLayer, testLayerAsync, generateLayerTests, device} from '@deck.gl/test-utils/vitest';
+import {LayerManager, MapView, _GPUVectorModel as GPUVectorModel} from '@deck.gl/core';
+import {Buffer} from '@luma.gl/core';
+import {HeatmapLayer} from '@deck.gl/aggregation-layers';
+import {default as TriangleLayer} from '@deck.gl/aggregation-layers/heatmap-layer/triangle-layer';
+import {
+  maxWeightUniforms,
+  weightUniforms
+} from '@deck.gl/aggregation-layers/heatmap-layer/heatmap-layer-uniforms';
+import {triangleUniforms} from '@deck.gl/aggregation-layers/heatmap-layer/triangle-layer-uniforms';
+import triangleSource from '@deck.gl/aggregation-layers/heatmap-layer/triangle-layer.wgsl';
+import maxWeightSource from '@deck.gl/aggregation-layers/heatmap-layer/max.wgsl';
+import weightSource from '@deck.gl/aggregation-layers/heatmap-layer/weights.wgsl';
+import {
+  getShaderModuleSource,
+  getShaderModuleUniformLayoutValidationResult
+} from '@luma.gl/shaders';
+import {getWebGPUTestDevice} from '@luma.gl/core/test-utils';
+
+const getPosition = d => d.COORDINATES;
+
+for (const backend of ['webgl', 'webgpu'] as const) {
+  test(`TriangleLayer borrows typed vertex buffers on ${backend}`, async ({skip}) => {
+    const testDevice = backend === 'webgpu' ? await getWebGPUTestDevice('core') : device;
+    if (!testDevice) {
+      skip();
+      return;
+    }
+    const positions = testDevice.createBuffer({
+      data: new Float32Array(12),
+      usage: Buffer.VERTEX | Buffer.COPY_DST
+    });
+    const texCoords = testDevice.createBuffer({
+      data: new Float32Array(8),
+      usage: Buffer.VERTEX | Buffer.COPY_DST
+    });
+    const texture = testDevice.createTexture({
+      width: 1,
+      height: 1,
+      data: new Uint8Array([0, 0, 0, 255])
+    });
+    try {
+      await testLayerAsync({
+        Layer: TriangleLayer,
+        device: testDevice,
+        testCases: [
+          {
+            props: {
+              data: {attributes: {positions, texCoords}},
+              vertexCount: 4,
+              colorDomain: [0, 1],
+              aggregationMode: 0,
+              threshold: 0,
+              intensity: 1,
+              colorTexture: texture,
+              maxTexture: texture,
+              weightsTexture: texture
+            },
+            onAfterUpdate: ({layer}) => {
+              const model = layer.getModels()[0] as GPUVectorModel;
+              expect(model).toBeInstanceOf(GPUVectorModel);
+              for (const [name, buffer] of Object.entries({positions, texCoords})) {
+                const slot =
+                  backend === 'webgl'
+                    ? model.pipeline.shaderLayout.attributes!.find(
+                        attribute => attribute.name === name
+                      )!.location
+                    : model.vertexArray.getBufferSlot(name)!;
+                expect(model.vertexArray.attributes[slot]).toBe(buffer);
+              }
+            }
+          }
+        ],
+        onError: error => {
+          throw error;
+        }
+      });
+      expect(positions.destroyed).toBe(false);
+      expect(texCoords.destroyed).toBe(false);
+    } finally {
+      positions.destroy();
+      texCoords.destroy();
+      texture.destroy();
+    }
+  });
+}
+
+test('HeatmapLayer#WGSL uniform layouts', () => {
+  const modules = [
+    {
+      module: weightUniforms,
+      uniformNames: ['commonBounds', 'radiusPixels', 'textureWidth', 'weightsScale']
+    },
+    {module: maxWeightUniforms, uniformNames: ['textureSize']},
+    {
+      module: triangleUniforms,
+      uniformNames: ['aggregationMode', 'colorDomain', 'intensity', 'threshold']
+    }
+  ];
+
+  for (const {module, uniformNames} of modules) {
+    const validation = getShaderModuleUniformLayoutValidationResult(module, 'wgsl');
+
+    expect(validation, `${module.name} declares a WGSL uniform block`).toBeTruthy();
+    expect(validation?.matches, `${module.name} matches its uniform types`).toBe(true);
+    expect(validation?.expectedUniformNames, `${module.name} preserves uniform order`).toEqual(
+      uniformNames
+    );
+  }
+});
+
+test('HeatmapLayer#WGSL texture bindings', () => {
+  const maxModuleSource = getShaderModuleSource(maxWeightUniforms, 'wgsl');
+  const triangleModuleSource = getShaderModuleSource(triangleUniforms, 'wgsl');
+
+  expect(maxModuleSource).toContain('var inTexture: texture_2d<f32>');
+  expect(triangleModuleSource).toContain('var colorTexture: texture_2d<f32>');
+  expect(triangleModuleSource).toContain('var colorTextureSampler: sampler');
+  expect(triangleModuleSource).toContain('var maxTexture: texture_2d<f32>');
+  expect(triangleModuleSource).toContain('var weightsTexture: texture_2d<f32>');
+  expect(triangleModuleSource).toContain('var weightsTextureSampler: sampler');
+});
+
+test('HeatmapLayer#WGSL kernel uses instanced quads', () => {
+  expect(weightSource).toContain('@builtin(vertex_index) vertexIndex: u32');
+  expect(weightSource).toContain('array<vec2<f32>, 6>');
+  expect(weightSource).toContain('instancePositions: vec3<f32>');
+  expect(weightSource).toContain('instancePositions64Low: vec3<f32>');
+  expect(weightSource).toContain('instanceWeights: f32');
+  expect(weightSource).not.toContain('gl_PointCoord');
+});
+
+test('HeatmapLayer#WGSL maximum reduction uses bounded blocks', () => {
+  expect(maxWeightSource).toContain('MAX_WEIGHT_REDUCTION_SIZE: u32 = 16u');
+  expect(maxWeightSource).toContain('textureCoordinates.x < textureSize');
+  expect(maxWeightSource).toContain('textureCoordinates.y < textureSize');
+});
+
+test('HeatmapLayer#WGSL presentation corrects render-target origin', () => {
+  expect(triangleSource).toContain('1.0 - attributes.texCoords.y');
+});
+
+const viewport0 = new MapView().makeViewport({
+  width: 100,
+  height: 100,
+  viewState: {longitude: -122, latitude: 38, zoom: 10}
+});
+
+const viewport1 = new MapView().makeViewport({
+  width: 100,
+  height: 100,
+  viewState: {longitude: 0, latitude: 10, zoom: 10}
+});
+
+const viewport2_slightChange = new MapView().makeViewport({
+  width: 100,
+  height: 100,
+  viewState: {longitude: 0.01, latitude: 10, zoom: 10}
+});
+
+const viewport3_bigChange = new MapView().makeViewport({
+  width: 100,
+  height: 100,
+  viewState: {longitude: 10, latitude: 0, zoom: 10}
+});
+
+const viewport4_zoomChange = new MapView().makeViewport({
+  width: 100,
+  height: 100,
+  viewState: {longitude: 10, latitude: 0, zoom: 9.9}
+});
+
+test('HeatmapLayer', () => {
+  const testCases = generateLayerTests({
+    Layer: HeatmapLayer,
+    sampleProps: {
+      data: FIXTURES.points.slice(0, 3),
+      getPosition
+    },
+    assert: (cond, msg) => expect(cond, msg).toBeTruthy(),
+    onBeforeUpdate: ({testCase}) => console.log(testCase.title),
+    onAfterUpdate({layer}) {
+      expect(layer.state.worldBounds, 'should update state.worldBounds').toBeTruthy();
+    }
+  });
+
+  testLayer({Layer: HeatmapLayer, testCases, onError: err => expect(err).toBeFalsy()});
+});
+
+test.skip('HeatmapLayer#updates', () => {
+  testLayer({
+    Layer: HeatmapLayer,
+    onError: err => expect(err).toBeFalsy(),
+    viewport: viewport0,
+    testCases: [
+      {
+        props: {
+          data: FIXTURES.points,
+          getPosition,
+          pickable: false
+        },
+        onAfterUpdate({layer, subLayer}) {
+          const {worldBounds, viewportCorners} = layer.state;
+
+          expect(
+            subLayer instanceof TriangleLayer,
+            'Sublayer Triangle layer rendered'
+          ).toBeTruthy();
+
+          expect(worldBounds, 'should compute worldBounds').toBeTruthy();
+          expect(viewportCorners, 'should compute viewportCorners').toBeTruthy();
+        }
+      },
+      {
+        updateProps: {
+          colorRange: HeatmapLayer.defaultProps.colorRange.slice()
+        },
+        spies: ['_updateColorTexture', '_updateBounds'],
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(subLayers.length === 1, 'Sublayer rendered').toBeTruthy();
+
+          expect(spies._updateColorTexture, 'should update color texture').toHaveBeenCalled();
+          expect(
+            spies._updateBounds,
+            'viewport not changed, should not call _updateBounds'
+          ).not.toHaveBeenCalled();
+          spies._updateColorTexture.mockRestore();
+          spies._updateBounds.mockRestore();
+        }
+      },
+      {
+        viewport: viewport1, // viewport changed
+        spies: [
+          '_updateColorTexture',
+          '_updateBounds',
+          '_updateWeightmap',
+          '_updateTextureRenderingBounds'
+        ],
+        onAfterUpdate({layer, subLayers, spies}) {
+          const {zoom} = layer.state;
+          expect(
+            spies._updateColorTexture,
+            'should not update color texture'
+          ).not.toHaveBeenCalled();
+          expect(
+            spies._updateBounds,
+            'viewport changed, should call _updateBounds'
+          ).toHaveBeenCalled();
+          expect(
+            spies._updateWeightmap,
+            'boundsChanged changed, should _updateWeightmap'
+          ).toHaveBeenCalled();
+          expect(
+            spies._updateTextureRenderingBounds,
+            'vieport changed, should call _updateTextureRenderingBounds'
+          ).toHaveBeenCalled();
+          expect(zoom, 'should update state.zoom').toBe(viewport1.zoom);
+          spies._updateColorTexture.mockRestore();
+          spies._updateBounds.mockRestore();
+          spies._updateWeightmap.mockRestore();
+          spies._updateTextureRenderingBounds.mockRestore();
+        }
+      },
+      {
+        viewport: viewport2_slightChange, // panned slightly, no zoom change
+        spies: ['_updateBounds', '_updateWeightmap', '_updateTextureRenderingBounds'],
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(
+            spies._updateBounds,
+            'viewport changed slightly, should call _updateBounds'
+          ).toHaveBeenCalled();
+          expect(
+            spies._updateWeightmap,
+            'viewport changed slightly, should not call _updateWeightmap'
+          ).not.toHaveBeenCalled();
+          expect(
+            spies._updateTextureRenderingBounds,
+            'viewport changed slightly, should call _updateTextureRenderingBounds'
+          ).toHaveBeenCalled();
+          spies._updateBounds.mockRestore();
+          spies._updateWeightmap.mockRestore();
+          spies._updateTextureRenderingBounds.mockRestore();
+        }
+      },
+      {
+        viewport: viewport3_bigChange, // panned too far, no zoom change
+        spies: ['_updateBounds', '_updateWeightmap'],
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(
+            spies._updateBounds,
+            'viewport panned too far, should call _updateBounds'
+          ).toHaveBeenCalled();
+          expect(
+            spies._updateWeightmap,
+            'viewport panned too far, should call _updateWeightmap'
+          ).toHaveBeenCalled();
+          spies._updateBounds.mockRestore();
+          spies._updateWeightmap.mockRestore();
+        }
+      },
+      {
+        viewport: viewport4_zoomChange, // only zoom change
+        spies: ['_updateBounds', '_debouncedUpdateWeightmap'],
+        onAfterUpdate({layer, subLayers, spies}) {
+          const {zoom} = layer.state;
+          expect(
+            spies._updateBounds,
+            'viewport zoom changed, should call _updateBounds'
+          ).toHaveBeenCalled();
+          expect(
+            spies._debouncedUpdateWeightmap,
+            'viewport zoom changed, should call _debouncedUpdateWeightmap'
+          ).toHaveBeenCalled();
+          spies._updateBounds.mockRestore();
+          spies._debouncedUpdateWeightmap.mockRestore();
+          expect(zoom, 'viewport zoom changed, should update state.zoom').toBe(
+            viewport4_zoomChange.zoom
+          );
+        }
+      },
+      {
+        updateProps: {
+          radiusPixels: 2.123 // change from default value (30)
+        },
+        viewport: viewport4_zoomChange, // keep the same viewport
+        spies: ['_updateWeightmap'],
+        onAfterUpdate({layer, subLayers, spies}) {
+          expect(
+            spies._updateWeightmap,
+            'should update weight map on uniform change'
+          ).toHaveBeenCalled();
+          spies._updateWeightmap.mockRestore();
+        }
+      }
+    ]
+  });
+});
+
+test('HeatmapLayer#binaryData', () => {
+  const pointCount = 2;
+  const positions = new Float32Array(pointCount * 2);
+  const weights = new Float32Array(pointCount);
+
+  // Generate test data
+  positions[0] = -122.4;
+  positions[1] = 37.8; // San Francisco
+  positions[2] = -122.3;
+  positions[3] = 37.7; // Nearby point
+
+  weights[0] = 100;
+  weights[1] = 50;
+
+  const binaryData = {
+    length: pointCount,
+    attributes: {
+      getPosition: {
+        value: positions,
+        size: 2
+      },
+      getWeight: {
+        value: weights,
+        size: 1
+      }
+    }
+  };
+
+  testLayer({
+    Layer: HeatmapLayer,
+    onError: err => expect(err).toBeFalsy(),
+    viewport: viewport0,
+    testCases: [
+      {
+        props: {
+          data: binaryData,
+          radiusPixels: 30
+        },
+        onAfterUpdate({layer, subLayer}) {
+          expect(layer, 'HeatmapLayer should render with binary data').toBeTruthy();
+          expect(
+            subLayer instanceof TriangleLayer,
+            'Should create TriangleLayer sublayer'
+          ).toBeTruthy();
+          expect(layer.getNumInstances(), 'Should correctly count binary data instances').toBe(
+            pointCount
+          );
+
+          // Verify weightsTransform was created properly
+          expect(layer.state.weightsTransform, 'Should have weightsTransform').toBeTruthy();
+          expect(layer.state.weightsTexture, 'Should have weightsTexture').toBeTruthy();
+
+          const positionAttribute = layer.state.weightsTransform.model.bufferLayout.find(
+            a => a.name === 'positions'
+          ).attributes[0];
+          expect(positionAttribute, 'Should have position attribute').toBeTruthy();
+          expect(positionAttribute.format, 'bufferLayout should match binary data').toBe(
+            'float32x2'
+          );
+        }
+      }
+    ]
+  });
+});
+
+test('HeatmapLayer#WebGPU binary positions', async ({skip}) => {
+  const webgpuDevice = await getWebGPUTestDevice();
+  if (!webgpuDevice) {
+    skip();
+    return;
+  }
+
+  for (const positionSize of [2, 3]) {
+    const errors: Error[] = [];
+    const layerManager = new LayerManager(webgpuDevice, {viewport: viewport0});
+    layerManager.setProps({onError: error => errors.push(error)});
+
+    const positions =
+      positionSize === 2
+        ? new Float32Array([-122.4, 37.8, -122.3, 37.7])
+        : new Float32Array([-122.4, 37.8, 0, -122.3, 37.7, 0]);
+    const layer = new HeatmapLayer({
+      id: `webgpu-binary-heatmap-${positionSize}`,
+      data: {
+        length: 2,
+        attributes: {
+          getPosition: {value: positions, size: positionSize},
+          getWeight: {value: new Float32Array([100, 50]), size: 1}
+        }
+      },
+      radiusPixels: 30
+    });
+
+    webgpuDevice.handle.pushErrorScope('validation');
+    layerManager.setLayers([layer]);
+
+    expect(errors, `${positionSize}-component binary positions initialize`).toEqual([]);
+    expect(layer.state.weightsTransform, 'creates the weights transform').toBeDefined();
+    const positionLayout = layer.state.weightsTransform?.model.bufferLayout.find(
+      layout => layout.name === 'instancePositions'
+    );
+    expect(positionLayout?.byteStride, 'packs high and low XYZ positions').toBe(24);
+    expect(positionLayout?.attributes, 'declares compatible WebGPU vertex attributes').toEqual([
+      {attribute: 'instancePositions', format: 'float32x3', byteOffset: 0},
+      {attribute: 'instancePositions64Low', format: 'float32x3', byteOffset: 12}
+    ]);
+    expect(
+      await webgpuDevice.handle.popErrorScope(),
+      `${positionSize}-component binary positions create a valid WebGPU pipeline`
+    ).toBeNull();
+
+    layerManager.finalize();
+  }
+});
+
+test('Heatmap borrows GPU columns and updates row prefixes', async ({skip}) => {
+  const webgpuDevice = await getWebGPUTestDevice();
+  if (!webgpuDevice) return skip();
+  const {GPUVector} = await import('@luma.gl/graph/gpu-data');
+  const buffer = webgpuDevice.createBuffer({
+    data: new Float32Array([999, 999, 999, 999, -122.4, 37.8, 0, 2, -122.3, 37.7, 0, 3]),
+    usage: Buffer.VERTEX | Buffer.COPY_DST
+  });
+  const positions = new GPUVector({
+    type: 'buffer',
+    name: 'positions',
+    format: 'float32x3',
+    byteOffset: 16,
+    buffer,
+    length: 2,
+    byteStride: 16,
+    ownsBuffer: false
+  });
+  const weights = new GPUVector({
+    type: 'buffer',
+    name: 'weights',
+    format: 'float32',
+    buffer,
+    length: 2,
+    byteOffset: 28,
+    byteStride: 16,
+    ownsBuffer: false
+  });
+  webgpuDevice.handle.pushErrorScope('validation');
+  try {
+    const manager = new LayerManager(webgpuDevice, {viewport: viewport0});
+    const errors: Error[] = [];
+    manager.setProps({onError: error => errors.push(error)});
+    let layer = new HeatmapLayer({
+      positions,
+      weights: [weights],
+      weightsTextureSize: 128,
+      getPosition: () => {
+        throw new Error('Accessor called');
+      }
+    });
+    try {
+      for (const count of [2, 1, 0, 2]) {
+        layer = layer.clone({numInstances: count});
+        manager.setLayers([layer]);
+        expect(errors.map(error => error.message)).toEqual([]);
+        expect(layer.state.weightsTransform.model.instanceCount).toBe(count);
+        const model = layer.state.weightsTransform.model;
+        const vertexArray = model.vertexArray;
+        for (const [name, offset] of [
+          ['instancePositions', 16],
+          ['instanceWeights', 28]
+        ] as const) {
+          const slot = vertexArray.getBufferSlot(name)!;
+          expect(slot).not.toBeNull();
+          expect(vertexArray.attributes[slot]).toBe(buffer);
+          expect(vertexArray.attributeByteOffsets[slot]).toBe(offset);
+          expect(model.bufferLayout.find(layout => layout.name === name)!.byteStride).toBe(16);
+        }
+      }
+    } finally {
+      manager.finalize();
+    }
+    expect(buffer.destroyed).toBe(false);
+  } finally {
+    positions.destroy();
+    weights.destroy();
+    buffer.destroy();
+    expect(await webgpuDevice.handle.popErrorScope()).toBeNull();
+  }
+});

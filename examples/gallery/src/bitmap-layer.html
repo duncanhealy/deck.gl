@@ -2,9 +2,10 @@
   <head>
     <title>deck.gl BitmapLayer Example</title>
 
-    <script src="https://unpkg.com/deck.gl@^8.0.0/dist.min.js"></script>
-    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v1.4.0/mapbox-gl.js"></script>
+    <script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
+    <script src='https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.js'></script>
 
+    <link href='https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css' rel='stylesheet' />
     <style type="text/css">
       body {
         width: 100vw;
@@ -21,7 +22,7 @@
     
     // MapBox example : https://docs.mapbox.com/mapbox-gl-js/example/image-on-a-map/
     new DeckGL({
-      mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json',
+      mapStyle: 'https://tiles.openfreemap.org/styles/dark',
       initialViewState: {
         longitude: -75.789,
         latitude: 41.874,

@@ -1,16 +1,18 @@
 # @deck.gl/carto
 
-Deck.gl is the preferred and official solution for creating modern Webapps using the [CARTO Location Intelligence platform](https://carto.com/)
+Deck.gl is the preferred and official solution for creating modern geospatial web applications using [CARTO Location Intelligence platform](https://carto.com/).
+
+With deck.gl and the **CARTO platform** you can directly access spatial datasets and tilesets that are hosted in your current cloud data warehouse. CARTO provides seamless integrations with Google BigQuery, Amazon Redshift, Snowflake, Databricks and PostgreSQL-compatible databases, eliminating the need to move your data into CARTO.
 
 <img src="https://raw.githubusercontent.com/CartoDB/viz-doc/master/deck.gl/img/osm_buildings.jpg" />
 
+The platform integrates with the CARTO Maps API to:
 
-It integrates with the [CARTO Maps API](https://carto.com/developers/maps-api/reference/) to:
+- Provide a geospatial backend storage for your geospatial data.
+- Visualize large datasets overcoming browser memory limitations.
+- Provide an SQL spatial interface to work directly with your data.
 
-* Provide a geospatial backend storage for your geospatial data.
-* Visualize large datasets which do not fit within browser memory.
-* Provide an SQL spatial interface to work with your data.
-
+<img src="https://raw.githubusercontent.com/CartoDB/viz-doc/master/deck.gl/img/eu_rivers.jpg" />
 
 ## Install package
 
@@ -22,57 +24,93 @@ npm install @deck.gl/core @deck.gl/layers @deck.gl/geo-layers @deck.gl/carto
 
 ## Usage
 
+### Automatically create layers configured in CARTO Builder
+
 ```js
-import DeckGL from '@deck.gl/react';
-import {CartoSQLLayer, setDefaultCredentials} from '@deck.gl/carto';
+import {Deck} from '@deck.gl/core';
+import {fetchMap} from '@deck.gl/carto';
 
-setDefaultCredentials({
-  username: 'public',
-  apiKey: 'default_public'
-});
+const cartoMapId = 'ff6ac53f-741a-49fb-b615-d040bc5a96b8';
+fetchMap({cartoMapId}).then(map => new Deck(map));
+```
 
-function App({viewState}) {
-  const layer = new CartoSQLLayer({
-    data: 'SELECT * FROM world_population_2015',
+### Custom layers connected to CARTO datasource
+
+```jsx
+import {DeckGL} from '@deck.gl/react';
+import {VectorTileLayer} from '@deck.gl/carto';
+import {vectorQuerySource} from '@carto/api-client';
+
+function App() {
+  const data = vectorQuerySource({
+    accessToken: 'XXX',
+    connectionName: 'carto_dw',
+    sqlQuery: 'SELECT * FROM cartobq.testtables.points_10k',
+  });
+
+  const layer = new VectorTileLayer({
+    data,
     pointRadiusMinPixels: 2,
-    getLineColor: [0, 0, 0, 0.75],
+    getLineColor: [0, 0, 0, 200],
     getFillColor: [238, 77, 90],
     lineWidthMinPixels: 1
-  })
+  });
 
-  return <DeckGL viewState={viewState} layers={[layer]} />;
+  return <DeckGL layers={[layer]} />;
 }
 ```
 
 ### Examples
 
-You can see real examples for the following:
+You can view a collection of working examples on the [CARTO documentation website](https://docs.carto.com/carto-for-developers/carto-for-deck.gl/examples).
 
-* [Scripting](https://carto.com/developers/deck-gl/examples/): Quick scripting examples to play with the module without NPM or Webpack. If you're not a web developer, this is probably what you're looking for.
+### CARTO Layers
 
-* [React](https://github.com/CartoDB/viz-doc/tree/master/deck.gl/examples/react): integrate in a React application.
+The CARTO module contains a number of custom layers which can be used to visualize the data, which work in conjunction with the [data source](#carto-data-sources) functions:
 
-* [Pure JS](https://github.com/CartoDB/viz-doc/tree/master/deck.gl/examples/pure-js): integrate in a pure js application, using webpack.
+- [H3TileLayer](./h3-tile-layer.md)
+- [HeatmapTileLayer](./heatmap-tile-layer.md)
+- [QuadbinTileLayer](./quadbin-tile-layer.md)
+- [RasterTileLayer](./raster-tile-layer.md)
+- [VectorTileLayer](./vector-tile-layer.md)
+
+### CARTO Data sources
+
+There are a number of [data source functions](./data-sources.md) for accessing data from the CARTO platform. These provide a simple way to fetch data from the CARTO platform, which can then be used with deck.gl layers.
+
+#### Authentication
+
+When defining a [data source](./data-sources.md) it is necessary to provide a:
+
+- `accessToken`: token to [authenticate/authorize requests](https://docs.carto.com/carto-for-developers/key-concepts/authentication-methods) to the CARTO API,
+- `connectionName`: name of [connection](https://docs.carto.com/carto-for-developers/key-concepts/connections) configured in the CARTO platform.
+
+### Support for other deck.gl layers
+
+The CARTO module includes a [collection of layers](#carto-layers) for easy visualization of data from the CARTO platfrom. For performace and scalability, this data is served as tiles.
+
+It is also straightforward to request data directly using the CARTO [SQL API](https://docs.carto.com/carto-for-developers/key-concepts/apis#sql). It can then be integrated with other deck.gl layers, for example:
 
 
-### CARTO credentials
+```jsx
+import {DeckGL} from '@deck.gl/react';
+import {GeoJsonLayer} from '@deck.gl/layers';
+import {query} from '@deck.gl/carto';
 
-This is an object to define the connection to CARTO, including the credentials (and optionally the parameters to point to specific api endpoints):
+function App() {
+  const data = query({
+    accessToken: 'XXX',
+    connectionName: 'carto_dw',
+    sqlQuery: 'SELECT * FROM cartobq.testtables.points_10k',
+  });
 
-* username (required): unique username in the platform
-* apiKey (optional): api key. default to `public_user`
-* region (optional): region of the user, possible values are `us` or `eu`. Only need to be specified if you've specifically requested an account in `eu`
-* sqlUrl (optional): SQL API URL Template. Default to `https://{user}.carto.com/api/v2/sql`
-* mapsUrl (optional): MAPS API URL Template. Default to `https://maps-api-v2.{region}.carto.com/user/{user}`
+  const layer = new ScatterplotLayer({
+    data,
+    dataTransform: data => data.rows,
+    getPosition: d => d.geom.coordinates,
+    getRadius: d => d.size
+  });
 
-If you're an on-premise user or you're running CARTO from [Google's Market place](https://console.cloud.google.com/marketplace/details/cartodb-public/carto-enterprise-payg), you need to set the URLs to point to your instance. 
-
-```js
-setDefaultCredentials({
-  username: 'public',
-  apiKey: 'default_public',
-  mapsUrl: 'https://<domain>/user/{user}/api/v1/map',
-  sqlUrl: 'https://<domain>/user/{user}/api/v2/sql',
-});
+  return <DeckGL layers={[layer]} />;
+}
 ```
-

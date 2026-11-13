@@ -1,14 +1,14 @@
 from __future__ import print_function
 
-from distutils.command.install import install
 from setuptools import setup, find_packages, Command
+from setuptools.command.install import install
 from setuptools.command.sdist import sdist
 from setuptools.command.build_py import build_py
 from setuptools.command.egg_info import egg_info
 from setuptools.command.develop import develop
 
 import atexit
-from distutils import log
+import logging
 import os
 from shutil import copy
 from subprocess import check_call, check_output
@@ -25,6 +25,9 @@ def read(*parts):
     return open(os.path.join(here, *parts), "r").read()
 
 
+log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler())
+log.setLevel(logging.INFO)
 log.info("setup.py entered")
 log.info("$PATH=%s" % os.environ["PATH"])
 
@@ -178,7 +181,7 @@ if __name__ == "__main__":
         description="Widget for deck.gl maps",
         long_description="{}".format(read("README.md")),
         long_description_content_type="text/markdown",
-        license="Apache 2.0 License",
+        license="Apache License 2.0",
         include_package_data=True,
         packages=find_packages(exclude=["tests*"]),
         cmdclass={
@@ -193,29 +196,33 @@ if __name__ == "__main__":
         author_email="ajduberstein@gmail.com",
         url="https://github.com/visgl/deck.gl/tree/master/bindings/pydeck",
         keywords=["data", "visualization", "graphics", "GIS", "maps"],
-        python_requires=">=3.7",
+        python_requires=">=3.8",
         classifiers=[
             "Intended Audience :: Developers",
             "Intended Audience :: Science/Research",
             "Topic :: Multimedia :: Graphics",
             "Programming Language :: Python :: 3",
-            "Programming Language :: Python :: 3.3",
-            "Programming Language :: Python :: 3.4",
-            "Programming Language :: Python :: 3.5",
-            "Programming Language :: Python :: 3.6",
-            "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3.10",
+            "Programming Language :: Python :: 3.11",
+            "Programming Language :: Python :: 3.12",
+            "Programming Language :: Python :: 3.13",
             "Framework :: Jupyter",
         ],
-        extras_require={"testing": ["pytest"]},
+        extras_require={
+            "carto": ["pydeck-carto"],
+            "jupyter": [
+                "ipywidgets>=7,<8",
+                "traitlets>=4.3.2",
+                "ipykernel>=5.1.2",
+            ],
+        },
         install_requires=[
-            'ipykernel>=5.1.2;python_version>="3.4"',
-            'ipython>=5.8.0;python_version<"3.4"',
-            "ipywidgets>=7.0.0",
-            "traitlets>=4.3.2",
             "jinja2>=2.10.1",
             "numpy>=1.16.4",
         ],
-        setup_requires=["Jinja2>=2.10.1"],
+        setup_requires=["Jinja2>=2.10.1", "jupyter>=1.0.0"],
         tests_require=["pytest>=4.0.2", "pandas", "requests"],
         data_files=[
             (

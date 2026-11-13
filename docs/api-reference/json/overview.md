@@ -4,7 +4,7 @@ The deck.gl JSON module provides a `JSONConverter` class that converts textual J
 
 Through a set of conventions, the JSON module allows the specification of _JavaScript class instances_, _React elements_, _enumerations_ and _functions_ (in addition to the basic types created during the JSON parsing process (i.e. arrays, objects, strings, numbers and booleans).
 
-The set of classes, React components, functions, constants and enumerations that should be available to the JSONConverter must be provided via an application-provided configuration object.
+The set of classes, React components, functions, constants, enumerations and optional conversion hooks that should be available to the `JSONConverter` must be provided via an application-provided configuration object.
 
 ## Use Cases
 
@@ -33,11 +33,11 @@ The module was created to enable specifying deck.gl visualizations using [JSON f
 ### Include the Standalone Bundle
 
 ```html
-<script src="https://unpkg.com/deck.gl@^7.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/deck.gl@^9.0.0/dist.min.js"></script>
 <!-- or -->
-<script src="https://unpkg.com/@deck.gl/core@^7.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/layers@^7.0.0/dist.min.js"></script>
-<script src="https://unpkg.com/@deck.gl/json@^7.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/core@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/layers@^9.0.0/dist.min.js"></script>
+<script src="https://unpkg.com/@deck.gl/json@^9.0.0/dist.min.js"></script>
 <!-- usage -->
 <script type="text/javascript">
   const {JSONConverter} = deck;
@@ -56,9 +56,29 @@ npm install @deck.gl/core @deck.gl/layers @deck.gl/json
 import {JSONConverter} from '@deck.gl/json';
 ```
 
+The configuration shape is centered around a single plain object:
+
+```js
+const configuration = {
+  classes: {
+    // layer/view/widget classes
+  },
+  functions: {
+    // named functions referenced by @@function
+  },
+  constants: {
+    // named constants referenced by @@#
+  },
+  enumerations: {
+    // enum groups referenced by @@#GROUP.VALUE
+  },
+  postProcessConvertedJson: json => json
+};
+```
+
 ## Schema
 
-The valid combinations are defined by the [documented API](/docs/api-reference/json/json-converter.md).
+The valid combinations are defined by the [documented API](./conversion-reference.md).
 
 ## Error Handling
 

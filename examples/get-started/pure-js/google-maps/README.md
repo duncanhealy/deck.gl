@@ -1,21 +1,17 @@
-<div align="center">
-   <img width="150" heigth="150" src="https://webpack.js.org/assets/icon-square-big.svg" />
-</div>
-
 ## Example: Use deck.gl with Google Maps
 
-Uses [Webpack](https://github.com/webpack/webpack) to bundle files and serves it
-with [webpack-dev-server](https://webpack.js.org/guides/development/#webpack-dev-server).
+Uses [Vite](https://vitejs.dev/) to bundle and serve files.
 
 ## Usage
 
-To run this example, you need a [Google Maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key). You can either set an environment variable:
+To run this example, you need a [Google Maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key) and a [map id](https://developers.google.com/maps/documentation/javascript/webgl#vector-id). You can either set an environment variable:
 
 ```bash
 export GoogleMapsAPIKey=<google_maps_api_key>
+export GoogleMapsMapId=<google_maps_map_id>
 ```
 
-Or set the `GOOGLE_MAPS_API_KEY` variable in `app.js`.
+Or set the `GOOGLE_MAPS_API_KEY` and `GOOGLE_MAP_ID` variables in `app.js`.
 
 To install dependencies:
 

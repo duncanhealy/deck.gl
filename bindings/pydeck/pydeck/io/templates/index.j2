@@ -10,7 +10,10 @@
     {% endif %}
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
+    <link rel="stylesheet" href="https://api.tiles.mapbox.com/mapbox-gl-js/v1.13.2/mapbox-gl.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.14.0/dist/maplibre-gl.css" />
     {{ deckgl_jupyter_widget_bundle }}
+    {{ deckgl_widget_css }}
     <style>
     {{ css_text }}
     </style>
@@ -20,9 +23,11 @@
     </div>
   </body>
   <script>
+    const container = document.getElementById('deck-container');
     const jsonInput = {{json_input}};
     const tooltip = {{tooltip}};
-    const customLibraries = {{ custom_libraries or 'null' }};
+    const customLibraries = {{custom_libraries or 'null'}};
+    const configuration = {{configuration or 'null'}};
 
     const deckInstance = createDeck({
       {% if mapbox_key %}
@@ -31,10 +36,14 @@
       {% if google_maps_key %}
       googleMapsKey: '{{google_maps_key}}',
       {% endif %}
-      container: document.getElementById('deck-container'),
+      container,
       jsonInput,
       tooltip,
-      customLibraries
+      customLibraries,
+      configuration,
+      {% if show_error %}
+      showError: true,
+      {% endif %}
     });
 
   </script>

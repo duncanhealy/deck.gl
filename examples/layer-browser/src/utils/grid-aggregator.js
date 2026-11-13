@@ -1,3 +1,7 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
 const R_EARTH = 6378000;
 
 /**
@@ -26,7 +30,10 @@ export function pointsToWorldGrid(points, cellSize) {
     return accu;
   }, {});
 
-  const maxHeight = Math.max.apply(null, Object.keys(gridHash).map(k => gridHash[k]));
+  const maxHeight = Math.max.apply(
+    null,
+    Object.keys(gridHash).map(k => gridHash[k])
+  );
 
   const data = Object.keys(gridHash).reduce((accu, key) => {
     const idxs = key.split('-');

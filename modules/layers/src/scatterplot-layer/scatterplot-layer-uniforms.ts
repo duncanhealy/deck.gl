@@ -1,0 +1,62 @@
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import type {ShaderModule} from '@luma.gl/shaders';
+
+const glslUniformBlock = `\
+layout(std140) uniform scatterplotUniforms {
+  float radiusScale;
+  float radiusMinPixels;
+  float radiusMaxPixels;
+  float lineWidthScale;
+  float lineWidthMinPixels;
+  float lineWidthMaxPixels;
+  float stroked;
+  float filled;
+  bool antialiasing;
+  bool billboard;
+  highp int radiusUnits;
+  highp int lineWidthUnits;
+  highp uint rowIndexOffset;
+} scatterplot;
+`;
+
+export type ScatterplotProps = {
+  radiusScale: number;
+  radiusMinPixels: number;
+  radiusMaxPixels: number;
+  lineWidthScale: number;
+  lineWidthMinPixels: number;
+  lineWidthMaxPixels: number;
+  stroked: boolean;
+  filled: boolean;
+  antialiasing: boolean;
+  billboard: boolean;
+  radiusUnits: number;
+  lineWidthUnits: number;
+  /** Global row offset for chunked column draws. */
+  rowIndexOffset?: number;
+};
+
+export const scatterplotUniforms = {
+  name: 'scatterplot',
+  vs: glslUniformBlock,
+  fs: glslUniformBlock,
+  source: '',
+  uniformTypes: {
+    radiusScale: 'f32',
+    radiusMinPixels: 'f32',
+    radiusMaxPixels: 'f32',
+    lineWidthScale: 'f32',
+    lineWidthMinPixels: 'f32',
+    lineWidthMaxPixels: 'f32',
+    stroked: 'f32',
+    filled: 'f32',
+    antialiasing: 'f32',
+    billboard: 'f32',
+    radiusUnits: 'i32',
+    lineWidthUnits: 'i32',
+    rowIndexOffset: 'u32'
+  }
+} as const satisfies ShaderModule<ScatterplotProps>;
